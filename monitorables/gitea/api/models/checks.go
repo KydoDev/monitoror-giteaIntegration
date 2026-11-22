@@ -14,6 +14,7 @@ type (
 		ID        int64
 		Title     string
 		State     string // pending, success, error, failure, warning, skipped
+		TargetURL string
 		CreatedAt time.Time
 		UpdatedAt time.Time
 	}
