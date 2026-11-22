@@ -20,6 +20,7 @@ type (
 		Checks(params *models.ChecksParams) (*coreModels.Tile, error)
 		PullRequest(params *models.PullRequestParams) (*coreModels.Tile, error)
 
+		ChecksGenerator(params interface{}) ([]uiConfigModels.GeneratedTile, error)
 		PullRequestsGenerator(params interface{}) ([]uiConfigModels.GeneratedTile, error)
 	}
 )

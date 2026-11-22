@@ -160,6 +160,36 @@ func (_m *Repository) GetPullRequests(owner string, repository string) ([]models
 	return r0, r1
 }
 
+// GetRepositories provides a mock function with given fields: owner
+func (_m *Repository) GetRepositories(owner string) ([]models.Repository, error) {
+	ret := _m.Called(owner)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetRepositories")
+	}
+
+	var r0 []models.Repository
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string) ([]models.Repository, error)); ok {
+		return rf(owner)
+	}
+	if rf, ok := ret.Get(0).(func(string) []models.Repository); ok {
+		r0 = rf(owner)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]models.Repository)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(owner)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // NewRepository creates a new instance of Repository. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
 // The first argument is typically a *testing.T value.
 func NewRepository(t interface {

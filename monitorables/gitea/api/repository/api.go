@@ -43,6 +43,13 @@ type (
 		Owner *user  `json:"owner"`
 	}
 
+	repositoryDetails struct {
+		Name          string `json:"name"`
+		DefaultBranch string `json:"default_branch"`
+		Archived      bool   `json:"archived"`
+		Empty         bool   `json:"empty"`
+	}
+
 	pullRequestBranch struct {
 		Ref  string      `json:"ref"`
 		SHA  string      `json:"sha"`
@@ -170,35 +177,67 @@ func (r *giteaRepository) GetPullRequest(owner, repository string, id int) (*mod
 }
 
 func (r *giteaRepository) GetPullRequests(owner, repository string) ([]models.PullRequest, error) {
+	query := url.Values{}
+	query.Set("state", "open")
+
+	pullRequests, err := getAllPages[pullRequest](r, fmt.Sprintf("/repos/%s/%s/pulls", url.PathEscape(owner), url.PathEscape(repository)), query)
+	if err != nil {
+		return nil, err
+	}
+
 	var results []models.PullRequest
-	path := fmt.Sprintf("/repos/%s/%s/pulls", url.PathEscape(owner), url.PathEscape(repository))
+	for i := range pullRequests {
+		results = append(results, *toPullRequest(&pullRequests[i]))
+	}
+
+	return results, nil
+}
+
+// GetRepositories loads the repositories of a user or an organization (organizations are users in this endpoint).
+func (r *giteaRepository) GetRepositories(owner string) ([]models.Repository, error) {
+	repositories, err := getAllPages[repositoryDetails](r, fmt.Sprintf("/users/%s/repos", url.PathEscape(owner)), url.Values{})
+	if err != nil {
+		return nil, err
+	}
+
+	var results []models.Repository
+	for _, repository := range repositories {
+		results = append(results, models.Repository{
+			Name:          repository.Name,
+			DefaultBranch: repository.DefaultBranch,
+			Archived:      repository.Archived,
+			Empty:         repository.Empty,
+		})
+	}
+
+	return results, nil
+}
+
+// getAllPages loads every page of a list endpoint (at most maxPages).
+func getAllPages[T any](r *giteaRepository, path string, query url.Values) ([]T, error) {
+	var results []T
 
 	for page := 1; page <= maxPages; page++ {
-		query := url.Values{}
-		query.Set("state", "open")
 		query.Set("page", strconv.Itoa(page))
 		query.Set("limit", strconv.Itoa(PageSize))
 
-		var pullRequests []pullRequest
-		header, err := r.get(path, query, &pullRequests)
+		var items []T
+		header, err := r.get(path, query, &items)
 		if err != nil {
 			return nil, err
 		}
 
-		if len(pullRequests) == 0 {
+		if len(items) == 0 {
 			return results, nil
 		}
-
-		for i := range pullRequests {
-			results = append(results, *toPullRequest(&pullRequests[i]))
-		}
+		results = append(results, items...)
 
 		// Gitea may return fewer items than requested (MAX_RESPONSE_ITEMS), so rely on the total when available
 		if total, err := strconv.Atoi(header.Get(totalCountHeader)); err == nil {
 			if len(results) >= total {
 				return results, nil
 			}
-		} else if len(pullRequests) < PageSize {
+		} else if len(items) < PageSize {
 			return results, nil
 		}
 	}

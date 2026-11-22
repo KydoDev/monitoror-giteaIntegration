@@ -46,6 +46,36 @@ func (_m *Usecase) Checks(params *models.ChecksParams) (*monitorormodels.Tile, e
 	return r0, r1
 }
 
+// ChecksGenerator provides a mock function with given fields: params
+func (_m *Usecase) ChecksGenerator(params interface{}) ([]configmodels.GeneratedTile, error) {
+	ret := _m.Called(params)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ChecksGenerator")
+	}
+
+	var r0 []configmodels.GeneratedTile
+	var r1 error
+	if rf, ok := ret.Get(0).(func(interface{}) ([]configmodels.GeneratedTile, error)); ok {
+		return rf(params)
+	}
+	if rf, ok := ret.Get(0).(func(interface{}) []configmodels.GeneratedTile); ok {
+		r0 = rf(params)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]configmodels.GeneratedTile)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(interface{}) error); ok {
+		r1 = rf(params)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // Count provides a mock function with given fields: params
 func (_m *Usecase) Count(params *models.CountParams) (*monitorormodels.Tile, error) {
 	ret := _m.Called(params)

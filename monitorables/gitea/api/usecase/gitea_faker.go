@@ -169,6 +169,10 @@ func (gu *giteaUsecase) PullRequest(params *models.PullRequestParams) (tile *cor
 	return tile, nil
 }
 
+func (gu *giteaUsecase) ChecksGenerator(params interface{}) ([]uiConfigModels.GeneratedTile, error) {
+	panic("unimplemented")
+}
+
 func (gu *giteaUsecase) PullRequestsGenerator(params interface{}) ([]uiConfigModels.GeneratedTile, error) {
 	panic("unimplemented")
 }

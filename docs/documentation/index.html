@@ -94,6 +94,7 @@
               <li><a href="#tile-gitea-checks">GITEA-CHECKS</a></li>
               <li><a href="#tile-gitea-pullrequest">GITEA-PULLREQUEST</a></li>
               <li><a href="#tile-generate-gitea-pullrequest"><span class="tag-generate">GENERATE:</span>GITEA-PULLREQUEST</a></li>
+              <li><a href="#tile-generate-gitea-checks"><span class="tag-generate">GENERATE:</span>GITEA-CHECKS</a></li>
             </ul>
           </li>
           <li>
@@ -1232,6 +1233,40 @@ MO_MONITORABLE_GITEA_SSLVERIFY=true
   "params": {
     "owner": "gitea",
     "repository": "tea"
+  }
+}
+        </code></pre>
+      </div>
+
+      <h4 id="tile-generate-gitea-checks">GENERATE:<wbr>GITEA-CHECKS</h4>
+
+      <p>
+        Show the status of the default branch of each repository of a Gitea organization or user.
+      </p>
+
+      <p class="note">
+        <span class="tag">Note</span>
+        This tile is a generator tile that will be replaced by N classic
+        <code><a href="#tile-gitea-checks">GITEA-CHECKS</a></code> tiles, labelled with the repository name. <br>
+        N being the number of repositories visible with the configured token, archived and empty repositories excluded.
+        Requires UI configuration <code>"version": "2.1"</code> or higher.
+      </p>
+
+      <h5 class="m-documentation--configuration-side-title">UI configuration</h5>
+
+      <dl>
+        <dt><code>owner</code> <code class="type">string</code> <span class="required">required</span></dt>
+        <dd>
+          Gitea organization or user (from URL)
+        </dd>
+      </dl>
+
+      <div class="m-documentation--example">
+        <pre class="example"><code class="language-json">
+{
+  "type": "GENERATE:GITEA-CHECKS",
+  "params": {
+    "owner": "gitea"
   }
 }
         </code></pre>
