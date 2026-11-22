@@ -74,6 +74,7 @@ func TestChecks_NoChecks(t *testing.T) {
 	mockRepository := new(mocks.Repository)
 	mockRepository.On("GetChecks", AnythingOfType("string"), AnythingOfType("string"), AnythingOfType("string")).
 		Return(&models.Checks{}, nil)
+	mockRepository.On("GetRuns", "test", "test", "master").Return(nil, errors.New("gitea returned status 404"))
 
 	gu := NewGiteaUsecase(mockRepository)
 
@@ -99,6 +100,7 @@ func TestChecks_Success(t *testing.T) {
 
 	mockRepository := new(mocks.Repository)
 	mockRepository.On("GetChecks", "test", "test", "master").Return(checks, nil)
+	mockRepository.On("GetRuns", "test", "test", "master").Return([]models.Run{}, nil)
 
 	gu := NewGiteaUsecase(mockRepository)
 
@@ -141,6 +143,7 @@ func TestChecks_Failure(t *testing.T) {
 
 	mockRepository := new(mocks.Repository)
 	mockRepository.On("GetChecks", "test", "test", "master").Return(checks, nil)
+	mockRepository.On("GetRuns", "test", "test", "master").Return([]models.Run{}, nil)
 	mockRepository.On("GetCommit", "test", "test", "sha").Return(commit, nil)
 
 	gu := NewGiteaUsecase(mockRepository)
@@ -162,6 +165,7 @@ func TestChecks_FailureWithCommitError(t *testing.T) {
 
 	mockRepository := new(mocks.Repository)
 	mockRepository.On("GetChecks", "test", "test", "master").Return(checks, nil)
+	mockRepository.On("GetRuns", "test", "test", "master").Return([]models.Run{}, nil)
 	mockRepository.On("GetCommit", "test", "test", "sha").Return(nil, errors.New("boom"))
 
 	gu := NewGiteaUsecase(mockRepository)
@@ -184,6 +188,7 @@ func TestChecks_Running(t *testing.T) {
 
 	mockRepository := new(mocks.Repository)
 	mockRepository.On("GetChecks", "test", "test", "master").Return(checks, nil)
+	mockRepository.On("GetRuns", "test", "test", "master").Return([]models.Run{}, nil)
 
 	gu := NewGiteaUsecase(mockRepository)
 
@@ -332,7 +337,7 @@ func TestConvertChecks_SameSecondHighestIDWins(t *testing.T) {
 		},
 	}
 
-	statuses, _, _, _ := convertChecks(checks)
+	statuses, _, _, _ := convertChecks(checks, nil)
 	assert.Equal(t, []coreModels.TileStatus{coreModels.SuccessStatus}, statuses)
 }
 
@@ -348,6 +353,7 @@ func TestChecks_DurationFromStatusHistory(t *testing.T) {
 
 	mockRepository := new(mocks.Repository)
 	mockRepository.On("GetChecks", "test", "test", "master").Return(checks, nil)
+	mockRepository.On("GetRuns", "test", "test", "master").Return([]models.Run{}, nil)
 
 	gu := NewGiteaUsecase(mockRepository)
 
@@ -369,7 +375,7 @@ func TestConvertChecks_DeduplicateAndOrder(t *testing.T) {
 		},
 	}
 
-	statuses, startedAt, finishedAt, id := convertChecks(checks)
+	statuses, startedAt, finishedAt, id := convertChecks(checks, nil)
 	assert.Equal(t, []coreModels.TileStatus{coreModels.WarningStatus, coreModels.SuccessStatus}, statuses)
 	assert.Equal(t, refTime.Add(-time.Hour), *startedAt)
 	assert.Equal(t, refTime.Add(time.Minute), *finishedAt)

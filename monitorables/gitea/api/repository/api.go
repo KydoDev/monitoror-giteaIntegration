@@ -23,6 +23,23 @@ type (
 		config *config.Gitea
 	}
 
+	workflowRun struct {
+		ID          int64     `json:"id"`
+		RunAttempt  int64     `json:"run_attempt"`
+		RunNumber   int64     `json:"run_number"`
+		Path        string    `json:"path"` // {workflow file}@{ref}
+		HeadSHA     string    `json:"head_sha"`
+		Status      string    `json:"status"`
+		Conclusion  string    `json:"conclusion"`
+		CreatedAt   time.Time `json:"created_at"`
+		StartedAt   time.Time `json:"started_at"`
+		CompletedAt time.Time `json:"completed_at"`
+	}
+
+	workflowRuns struct {
+		WorkflowRuns []workflowRun `json:"workflow_runs"`
+	}
+
 	user struct {
 		Login     string `json:"login"`
 		FullName  string `json:"full_name"`
@@ -34,6 +51,7 @@ type (
 		Status    string    `json:"status"`
 		Context   string    `json:"context"`
 		URL       string    `json:"url"` // .../repos/{owner}/{repo}/statuses/{sha}
+		TargetURL string    `json:"target_url"`
 		CreatedAt time.Time `json:"created_at"`
 		UpdatedAt time.Time `json:"updated_at"`
 	}
@@ -151,12 +169,50 @@ func (r *giteaRepository) GetChecks(owner, repository, ref string) (*models.Chec
 			ID:        s.ID,
 			Title:     s.Context,
 			State:     s.Status,
+			TargetURL: s.TargetURL,
 			CreatedAt: s.CreatedAt,
 			UpdatedAt: s.UpdatedAt,
 		})
 	}
 
 	return checks, nil
+}
+
+// GetRuns returns the latest Gitea Actions runs of a branch, newest first.
+// It fails on Gitea versions without this endpoint and when Actions are disabled.
+func (r *giteaRepository) GetRuns(owner, repository, branch string) ([]models.Run, error) {
+	query := url.Values{}
+	query.Set("branch", branch)
+	query.Set("limit", strconv.Itoa(PageSize))
+
+	var result workflowRuns
+	path := fmt.Sprintf("/repos/%s/%s/actions/runs", url.PathEscape(owner), url.PathEscape(repository))
+	if _, err := r.get(path, query, &result); err != nil {
+		return nil, err
+	}
+
+	runs := make([]models.Run, 0, len(result.WorkflowRuns))
+	for _, run := range result.WorkflowRuns {
+		workflow := run.Path
+		if i := strings.LastIndex(workflow, "@"); i >= 0 {
+			workflow = workflow[:i]
+		}
+
+		runs = append(runs, models.Run{
+			ID:          run.ID,
+			Attempt:     run.RunAttempt,
+			Number:      run.RunNumber,
+			Workflow:    workflow,
+			HeadSHA:     run.HeadSHA,
+			Status:      run.Status,
+			Conclusion:  run.Conclusion,
+			CreatedAt:   run.CreatedAt,
+			StartedAt:   validTime(run.StartedAt),
+			CompletedAt: validTime(run.CompletedAt),
+		})
+	}
+
+	return runs, nil
 }
 
 func (r *giteaRepository) GetPullRequest(owner, repository string, id int) (*models.PullRequest, error) {
@@ -290,6 +346,14 @@ func toPullRequest(pr *pullRequest) *models.PullRequest {
 	}
 
 	return result
+}
+
+// validTime maps the Unix epoch, used by Gitea for an unset date, to the zero time.
+func validTime(t time.Time) time.Time {
+	if t.Unix() <= 0 {
+		return time.Time{}
+	}
+	return t
 }
 
 func defaultString(value, fallback string) string {

@@ -5,6 +5,8 @@ package usecase
 import (
 	"fmt"
 	"sort"
+	"strconv"
+	"strings"
 	"time"
 
 	uiConfigModels "github.com/monitoror/monitoror/api/config/models"
@@ -73,17 +75,40 @@ func (gu *giteaUsecase) Checks(params *models.ChecksParams) (*coreModels.Tile, e
 	if err != nil {
 		return nil, &coreModels.MonitororError{Err: err, Tile: tile, Message: "unable to load ref checks"}
 	}
-	if len(checks.Statuses) == 0 {
+	// Request Gitea Actions runs: manual runs (workflow_dispatch) create no commit status.
+	// Runs are optional: without them (older Gitea, Actions disabled), commit statuses are used alone.
+	runs, err := gu.repository.GetRuns(params.Owner, params.Repository, params.Ref)
+	if err != nil {
+		runs = nil
+	}
+	buildRuns := selectBuildRuns(checks, runs)
+
+	if len(checks.Statuses) == 0 && len(buildRuns) == 0 {
 		// Unknown because request was correct but there is no build
 		return nil, &coreModels.MonitororError{Tile: tile, Message: "no ref checks found", ErrorStatus: coreModels.UnknownStatus}
 	}
 
 	// Compute checks into tile
-	gu.computeRefChecks(tile, checks, params.String())
+	gu.computeRefChecks(tile, checks, buildRuns, params.String())
+
+	if len(buildRuns) > 0 {
+		tile.Build.ID = pointer.ToString(strconv.FormatInt(buildRuns[0].Number, 10))
+
+		// Without history in cache (e.g. after a restart), estimate the duration from previous runs
+		if tile.Status == coreModels.RunningStatus && *tile.Build.EstimatedDuration == 0 {
+			if estimatedDuration := estimateDurationFromRuns(runs, buildRuns); estimatedDuration != nil {
+				tile.Build.EstimatedDuration = pointer.ToInt64(int64(estimatedDuration.Seconds()))
+			}
+		}
+	}
 
 	// Author of last commit
-	if tile.Status == coreModels.FailedStatus && checks.HeadCommit != nil {
-		commit, err := gu.repository.GetCommit(params.Owner, params.Repository, *checks.HeadCommit)
+	headCommit := checks.HeadCommit
+	if headCommit == nil && len(buildRuns) > 0 {
+		headCommit = &buildRuns[0].HeadSHA
+	}
+	if tile.Status == coreModels.FailedStatus && headCommit != nil {
+		commit, err := gu.repository.GetCommit(params.Owner, params.Repository, *headCommit)
 		if err == nil {
 			tile.Build.Author = &coreModels.Author{
 				Name:      commit.Author.Name,
@@ -121,7 +146,7 @@ func (gu *giteaUsecase) PullRequest(params *models.PullRequestParams) (*coreMode
 	}
 
 	// Compute checks into tile
-	gu.computeRefChecks(tile, checks, params.String())
+	gu.computeRefChecks(tile, checks, nil, params.String())
 
 	// Author of pull request
 	if tile.Status == coreModels.FailedStatus {
@@ -154,9 +179,9 @@ func (gu *giteaUsecase) PullRequestsGenerator(params interface{}) ([]uiConfigMod
 	return results, nil
 }
 
-func (gu *giteaUsecase) computeRefChecks(tile *coreModels.Tile, checks *models.Checks, paramsKey string) {
+func (gu *giteaUsecase) computeRefChecks(tile *coreModels.Tile, checks *models.Checks, runs []models.Run, paramsKey string) {
 	// convert checks
-	statuses, startedAt, finishedAt, id := convertChecks(checks)
+	statuses, startedAt, finishedAt, id := convertChecks(checks, runs)
 
 	// if statuses is empty, return SuccessStatus by default
 	if len(statuses) == 0 {
@@ -200,8 +225,8 @@ func (gu *giteaUsecase) computeRefChecks(tile *coreModels.Tile, checks *models.C
 	}
 }
 
-// convertChecks transform models.Checks to use it in computeRefChecks
-func convertChecks(checks *models.Checks) ([]coreModels.TileStatus, *time.Time, *time.Time, string) {
+// convertChecks transform models.Checks and the runs of the build to use them in computeRefChecks
+func convertChecks(checks *models.Checks, runs []models.Run) ([]coreModels.TileStatus, *time.Time, *time.Time, string) {
 	var statuses []coreModels.TileStatus
 	var startedAt *time.Time = nil
 	var finishedAt *time.Time = nil
@@ -234,6 +259,29 @@ func convertChecks(checks *models.Checks) ([]coreModels.TileStatus, *time.Time, 
 		ids = fmt.Sprintf("%s-%d", ids, status.ID)
 	}
 
+	for i := range runs {
+		run := &runs[i]
+		statuses = append(statuses, parseRun(run))
+
+		runStartedAt := run.CreatedAt
+		if !run.StartedAt.IsZero() {
+			runStartedAt = run.StartedAt
+		}
+		runFinishedAt := runStartedAt
+		if !run.CompletedAt.IsZero() {
+			runFinishedAt = run.CompletedAt
+		}
+
+		if startedAt == nil || startedAt.After(runStartedAt) {
+			startedAt = &runStartedAt
+		}
+		if finishedAt == nil || finishedAt.Before(runFinishedAt) {
+			finishedAt = &runFinishedAt
+		}
+		// A re-run keeps the run id and increments the attempt
+		ids = fmt.Sprintf("%s-run%d.%d", ids, run.ID, run.Attempt)
+	}
+
 	sort.Slice(statuses, func(i, j int) bool {
 		return orderedTileStatus[statuses[i]] < orderedTileStatus[statuses[j]]
 	})
@@ -257,4 +305,119 @@ func parseStatus(status *models.Status) coreModels.TileStatus {
 	}
 
 	return coreModels.UnknownStatus
+}
+
+func parseRun(run *models.Run) coreModels.TileStatus {
+	switch run.Status {
+	case "completed":
+		switch run.Conclusion {
+		case "success":
+			return coreModels.SuccessStatus
+		case "failure":
+			return coreModels.FailedStatus
+		case "cancelled":
+			return coreModels.CanceledStatus
+		case "skipped":
+			return coreModels.DisabledStatus
+		}
+	case "in_progress":
+		return coreModels.RunningStatus
+	case "queued", "waiting", "pending", "requested":
+		return coreModels.QueuedStatus
+	}
+
+	return coreModels.UnknownStatus
+}
+
+// selectBuildRuns keeps the runs of the build: the latest run of each workflow on the head commit.
+// The head commit comes from the commit statuses, or from the newest run when there is no status.
+// Commit statuses written by these runs are removed from checks, so a run is not counted twice.
+func selectBuildRuns(checks *models.Checks, runs []models.Run) []models.Run {
+	if len(runs) == 0 {
+		return nil
+	}
+
+	sorted := make([]models.Run, len(runs))
+	copy(sorted, runs)
+	sort.Slice(sorted, func(i, j int) bool { return sorted[i].ID > sorted[j].ID })
+
+	headSHA := sorted[0].HeadSHA
+	if checks.HeadCommit != nil {
+		headSHA = *checks.HeadCommit
+	}
+
+	var buildRuns []models.Run
+	headRunIDs := make(map[string]bool)
+	workflows := make(map[string]bool)
+	for _, run := range sorted {
+		if run.HeadSHA != headSHA {
+			continue
+		}
+		headRunIDs[strconv.FormatInt(run.ID, 10)] = true
+		if !workflows[run.Workflow] {
+			buildRuns = append(buildRuns, run)
+			workflows[run.Workflow] = true
+		}
+	}
+
+	if len(buildRuns) > 0 {
+		statuses := []models.Status{}
+		for _, status := range checks.Statuses {
+			if runID := actionsRunID(status.TargetURL); runID == "" || !headRunIDs[runID] {
+				statuses = append(statuses, status)
+			}
+		}
+		checks.Statuses = statuses
+	}
+
+	return buildRuns
+}
+
+// actionsRunID returns the run id of a commit status written by Gitea Actions
+// (target url ".../actions/runs/{id}/jobs/{job}"), or "" for any other status.
+func actionsRunID(targetURL string) string {
+	const marker = "/actions/runs/"
+	i := strings.Index(targetURL, marker)
+	if i < 0 {
+		return ""
+	}
+	id := targetURL[i+len(marker):]
+	if j := strings.Index(id, "/"); j >= 0 {
+		id = id[:j]
+	}
+	return id
+}
+
+// estimateDurationFromRuns averages the previous successful runs of each running workflow of the build
+// and returns the longest workflow estimate, or nil without history.
+func estimateDurationFromRuns(runs, buildRuns []models.Run) *time.Duration {
+	var estimate *time.Duration
+	for _, buildRun := range buildRuns {
+		if buildRun.Status != "in_progress" {
+			continue
+		}
+
+		var total time.Duration
+		var count int
+		for _, run := range runs {
+			if count == buildCacheSize {
+				break
+			}
+			if run.ID == buildRun.ID || run.Workflow != buildRun.Workflow || run.Conclusion != "success" ||
+				run.StartedAt.IsZero() || run.CompletedAt.IsZero() {
+				continue
+			}
+			total += run.CompletedAt.Sub(run.StartedAt)
+			count++
+		}
+
+		if count > 0 {
+			average := total / time.Duration(count)
+			if estimate == nil || average > *estimate {
+				estimate = &average
+			}
+		}
+	}
+
+	return estimate
 }

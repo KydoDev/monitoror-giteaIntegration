@@ -1037,6 +1037,13 @@ MO_MONITORABLE_GITEA_SSLVERIFY=true
         Show the commit status (Gitea Actions, Drone, Woodpecker, ...) for a given git reference.
       </p>
 
+      <p>
+        When <code>ref</code> is a branch, the tile also reads the Gitea Actions runs of the branch, so runs started by hand
+        (<code>workflow_dispatch</code>), which write no commit status, are shown too. The build is the latest run of each
+        workflow on the head commit, plus the commit statuses of other CI systems. Gitea versions without the runs API, or
+        repositories with Actions disabled, use the commit statuses alone.
+      </p>
+
       <p class="note">
         <span class="tag">Note</span>
         Requires UI configuration <code>"version": "2.1"</code> or higher.
