@@ -3928,6 +3928,7 @@ MO_MONITORABLE_YOUTRACK_SSLVERIFY=true
       <p class="note">
         <span class="tag">Note</span>
         Group will only show non-successful tiles. If the tile is empty: everything is fine!
+        Set <code>showAll</code> to also show the successful ones.
       </p>
 
       <h5 class="m-documentation--configuration-side-title">UI configuration</h5>
@@ -3940,6 +3941,16 @@ MO_MONITORABLE_YOUTRACK_SSLVERIFY=true
             <span class="tag">Note</span>
             Cannot contain <code>GROUP</code> nor <code>EMPTY</code> tiles
           </p>
+        </dd>
+        <dt><code>showAll</code> <code class="type">boolean</code></dt>
+        <dd>
+          Show every sub tile, successful ones included (default: <code>false</code>)
+        </dd>
+        <dt><code>maxTiles</code> <code class="type">number</code></dt>
+        <dd>
+          Maximum number of sub tiles shown (default: <code>6</code> with <code>showAll</code>, no limit otherwise).
+          Beyond it, sub tiles with a problem are shown first and the others are counted in a <code>+N</code> pill.
+          The status and the count of the group always include every sub tile.
         </dd>
       </dl>
 

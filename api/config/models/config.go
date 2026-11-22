@@ -39,6 +39,10 @@ type (
 		URL             string       `json:"url,omitempty"`
 		InitialMaxDelay *int         `json:"initialMaxDelay,omitempty"`
 
+		// GROUP only: also show the sub-tiles that are OK, at most MaxTiles of them (problems first)
+		ShowAll  bool `json:"showAll,omitempty"`
+		MaxTiles *int `json:"maxTiles,omitempty" validate:"omitempty,gt=0"`
+
 		// Used to validate config and to create API URLs
 		// Will be removed before being returned to the UI
 		Params        map[string]interface{} `json:"params,omitempty"`

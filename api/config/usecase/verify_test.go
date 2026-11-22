@@ -197,6 +197,22 @@ func TestUsecase_VerifyTile_Success_Group(t *testing.T) {
 	assert.Len(t, conf.Errors, 0)
 }
 
+func TestUsecase_VerifyTile_Success_GroupShowAll(t *testing.T) {
+	rawConfig := `
+      { "type": "GROUP", "label": "...", "showAll": true, "maxTiles": 4, "tiles": [
+          { "type": "PING", "params": { "hostname": "aserver.com" } }
+			]}
+`
+
+	tile, conf := initConfig(t, rawConfig)
+	usecase := initConfigUsecase(nil)
+	usecase.verifyTile(conf, tile, nil)
+
+	assert.Len(t, conf.Errors, 0)
+	assert.True(t, tile.ShowAll)
+	assert.Equal(t, 4, *tile.MaxTiles)
+}
+
 func TestUsecase_VerifyTile_Failed(t *testing.T) {
 	for _, testcase := range []struct {
 		rawConfig string
@@ -275,6 +291,15 @@ func TestUsecase_VerifyTile_Failed(t *testing.T) {
 			errorData: models.ConfigErrorData{
 				FieldName:     "params",
 				ConfigExtract: `{"type":"PING","configVariant":"default"}`,
+			},
+		},
+		{
+			rawConfig: `{ "type": "GROUP", "maxTiles": 0, "tiles": [{ "type": "PING", "params": { "hostname": "server.com" } }] }`,
+			errorID:   models.ConfigErrorInvalidFieldValue,
+			errorData: models.ConfigErrorData{
+				FieldName:     "maxTiles",
+				Expected:      "maxTiles > 0",
+				ConfigExtract: `{"type":"GROUP","tiles":[{"type":"PING","params":{"hostname":"server.com"}}],"maxTiles":0}`,
 			},
 		},
 		{
