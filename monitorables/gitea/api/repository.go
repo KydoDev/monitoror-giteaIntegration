@@ -13,5 +13,6 @@ type (
 		SearchPullRequests(owner string) ([]models.PullRequest, error)
 		GetCommit(owner, repository, sha string) (*models.Commit, error)
 		GetRepositories(owner string) ([]models.Repository, error)
+		GetMilestones(owner, repository string) ([]models.Milestone, error)
 	}
 )

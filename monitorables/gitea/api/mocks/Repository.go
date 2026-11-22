@@ -100,6 +100,36 @@ func (_m *Repository) GetCount(params *models.CountParams) (int, error) {
 	return r0, r1
 }
 
+// GetMilestones provides a mock function with given fields: owner, repository
+func (_m *Repository) GetMilestones(owner string, repository string) ([]models.Milestone, error) {
+	ret := _m.Called(owner, repository)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetMilestones")
+	}
+
+	var r0 []models.Milestone
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string, string) ([]models.Milestone, error)); ok {
+		return rf(owner, repository)
+	}
+	if rf, ok := ret.Get(0).(func(string, string) []models.Milestone); ok {
+		r0 = rf(owner, repository)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]models.Milestone)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(string, string) error); ok {
+		r1 = rf(owner, repository)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // GetPullRequest provides a mock function with given fields: owner, repository, id
 func (_m *Repository) GetPullRequest(owner string, repository string, id int) (*models.PullRequest, error) {
 	ret := _m.Called(owner, repository, id)

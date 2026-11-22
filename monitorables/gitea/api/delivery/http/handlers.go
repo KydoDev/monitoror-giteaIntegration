@@ -62,3 +62,18 @@ func (h *GiteaDelivery) GetPullRequest(c echo.Context) error {
 
 	return c.JSON(http.StatusOK, tile)
 }
+
+func (h *GiteaDelivery) GetMilestone(c echo.Context) error {
+	// Bind / check Params
+	params := &models.MilestoneParams{}
+	if err := delivery.BindAndValidateParams(c, params); err != nil {
+		return err
+	}
+
+	tile, err := h.giteaUsecase.Milestone(params)
+	if err != nil {
+		return err
+	}
+
+	return c.JSON(http.StatusOK, tile)
+}

@@ -9,6 +9,7 @@ export enum TileType {
   GiteaChecks = 'GITEA-CHECKS',
   GiteaPullRequest = 'GITEA-PULLREQUEST',
   GiteaCount = 'GITEA-COUNT',
+  GiteaMilestone = 'GITEA-MILESTONE',
   GitHubChecks = 'GITHUB-CHECKS',
   GitHubPullRequest = 'GITHUB-PULLREQUEST',
   GitHubCount = 'GITHUB-COUNT',

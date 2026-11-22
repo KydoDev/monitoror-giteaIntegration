@@ -51,6 +51,14 @@ type (
 		} `json:"repository"`
 	}
 
+	milestone struct {
+		ID           int64      `json:"id"`
+		Title        string     `json:"title"`
+		OpenIssues   int        `json:"open_issues"`
+		ClosedIssues int        `json:"closed_issues"`
+		DueOn        *time.Time `json:"due_on"`
+	}
+
 	repositoryDetails struct {
 		Name          string `json:"name"`
 		DefaultBranch string `json:"default_branch"`
@@ -227,6 +235,30 @@ func (r *giteaRepository) SearchPullRequests(owner string) ([]models.PullRequest
 			ID:         issue.Number,
 			Owner:      issue.Repository.Owner,
 			Repository: issue.Repository.Name,
+		})
+	}
+
+	return results, nil
+}
+
+// GetMilestones returns the open milestones of a repository.
+func (r *giteaRepository) GetMilestones(owner, repository string) ([]models.Milestone, error) {
+	query := url.Values{}
+	query.Set("state", "open")
+
+	milestones, err := getAllPages[milestone](r, fmt.Sprintf("/repos/%s/%s/milestones", url.PathEscape(owner), url.PathEscape(repository)), query)
+	if err != nil {
+		return nil, err
+	}
+
+	var results []models.Milestone
+	for _, m := range milestones {
+		results = append(results, models.Milestone{
+			ID:           m.ID,
+			Title:        m.Title,
+			OpenIssues:   m.OpenIssues,
+			ClosedIssues: m.ClosedIssues,
+			DueOn:        m.DueOn,
 		})
 	}
 
