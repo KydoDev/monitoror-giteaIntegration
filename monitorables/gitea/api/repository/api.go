@@ -61,6 +61,14 @@ type (
 		Owner *user  `json:"owner"`
 	}
 
+	searchIssue struct {
+		Number     int `json:"number"`
+		Repository struct {
+			Name  string `json:"name"`
+			Owner string `json:"owner"`
+		} `json:"repository"`
+	}
+
 	repositoryDetails struct {
 		Name          string `json:"name"`
 		DefaultBranch string `json:"default_branch"`
@@ -134,7 +142,14 @@ func (r *giteaRepository) GetCount(params *models.CountParams) (int, error) {
 	// Only the total count header is used
 	query.Set("limit", "1")
 
-	header, err := r.get(fmt.Sprintf("/repos/%s/%s/issues", url.PathEscape(params.Owner), url.PathEscape(params.Repository)), query, nil)
+	path := fmt.Sprintf("/repos/%s/%s/issues", url.PathEscape(params.Owner), url.PathEscape(params.Repository))
+	if params.Repository == "" {
+		// Every repository of the owner (user or organization)
+		path = "/repos/issues/search"
+		query.Set("owner", params.Owner)
+	}
+
+	header, err := r.get(path, query, nil)
 	if err != nil {
 		return 0, err
 	}
@@ -255,6 +270,30 @@ func (r *giteaRepository) GetPullRequests(owner, repository string) ([]models.Pu
 }
 
 // GetRepositories loads the repositories of a user or an organization (organizations are users in this endpoint).
+// SearchPullRequests returns the open pull requests of every repository of an owner (user or organization).
+func (r *giteaRepository) SearchPullRequests(owner string) ([]models.PullRequest, error) {
+	query := url.Values{}
+	query.Set("owner", owner)
+	query.Set("type", "pulls")
+	query.Set("state", "open")
+
+	issues, err := getAllPages[searchIssue](r, "/repos/issues/search", query)
+	if err != nil {
+		return nil, err
+	}
+
+	var results []models.PullRequest
+	for _, issue := range issues {
+		results = append(results, models.PullRequest{
+			ID:         issue.Number,
+			Owner:      issue.Repository.Owner,
+			Repository: issue.Repository.Name,
+		})
+	}
+
+	return results, nil
+}
+
 func (r *giteaRepository) GetRepositories(owner string) ([]models.Repository, error) {
 	repositories, err := getAllPages[repositoryDetails](r, fmt.Sprintf("/users/%s/repos", url.PathEscape(owner)), url.Values{})
 	if err != nil {

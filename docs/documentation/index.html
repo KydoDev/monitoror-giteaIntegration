@@ -957,7 +957,7 @@ MO_MONITORABLE_GITEA_SSLVERIFY=true
       <h4 id="tile-gitea-count">GITEA-COUNT</h4>
 
       <p>
-        Show a counter of issues or pull requests of a repository.
+        Show a counter of issues or pull requests of a repository, or of every repository of a user or organization.
       </p>
 
       <p class="note">
@@ -973,9 +973,10 @@ MO_MONITORABLE_GITEA_SSLVERIFY=true
           Gitea organization or user (from URL)
         </dd>
 
-        <dt><code>repository</code> <code class="type">string</code> <span class="required">required</span></dt>
+        <dt><code>repository</code> <code class="type">string</code></dt>
         <dd>
-          Gitea repository name (from URL)
+          Gitea repository name (from URL). Leave it empty to count across every repository of the owner
+          (repositories the token can see). Across repositories, unknown <code>labels</code> are ignored by Gitea.
         </dd>
 
         <dt><code>type</code> <code class="type">string</code></dt>
@@ -1210,7 +1211,7 @@ MO_MONITORABLE_GITEA_SSLVERIFY=true
       <h4 id="tile-generate-gitea-pullrequest">GENERATE:<wbr>GITEA-PULLREQUEST</h4>
 
       <p>
-        Show each open pull request status.
+        Show each open pull request status, of a repository or of every repository of a user or organization.
       </p>
 
       <p class="note">
@@ -1229,9 +1230,9 @@ MO_MONITORABLE_GITEA_SSLVERIFY=true
           Gitea organization or user (from URL)
         </dd>
 
-        <dt><code>repository</code> <code class="type">string</code> <span class="required">required</span></dt>
+        <dt><code>repository</code> <code class="type">string</code></dt>
         <dd>
-          Gitea repository name (from URL)
+          Gitea repository name (from URL). Leave it empty to generate a tile for every open pull request of the owner
         </dd>
       </dl>
 

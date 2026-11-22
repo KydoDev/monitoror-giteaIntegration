@@ -23,10 +23,10 @@ func TestCountParams_Validate(t *testing.T) {
 	test.AssertParams(t, param, 1)
 
 	param = &CountParams{Owner: "test"}
-	test.AssertParams(t, param, 1)
+	test.AssertParams(t, param, 0)
 
 	param = &CountParams{}
-	test.AssertParams(t, param, 2)
+	test.AssertParams(t, param, 1)
 }
 
 func TestCountParams_String(t *testing.T) {

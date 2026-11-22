@@ -13,7 +13,7 @@ type (
 		params.Default
 
 		Owner      string `json:"owner" query:"owner" validate:"required"`
-		Repository string `json:"repository" query:"repository" validate:"required"`
+		Repository string `json:"repository,omitempty" query:"repository"` // empty: every repository of the owner
 		Type       string `json:"type,omitempty" query:"type" validate:"omitempty,oneof=issues pulls"`
 		State      string `json:"state,omitempty" query:"state" validate:"omitempty,oneof=open closed all"`
 		Labels     string `json:"labels,omitempty" query:"labels"`
