@@ -72,6 +72,36 @@ func (_m *Repository) GetCommit(owner string, repository string, sha string) (*m
 	return r0, r1
 }
 
+// GetContributions provides a mock function with given fields: user
+func (_m *Repository) GetContributions(user string) ([]models.Contribution, error) {
+	ret := _m.Called(user)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetContributions")
+	}
+
+	var r0 []models.Contribution
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string) ([]models.Contribution, error)); ok {
+		return rf(user)
+	}
+	if rf, ok := ret.Get(0).(func(string) []models.Contribution); ok {
+		r0 = rf(user)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]models.Contribution)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(user)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // GetCount provides a mock function with given fields: params
 func (_m *Repository) GetCount(params *models.CountParams) (int, error) {
 	ret := _m.Called(params)

@@ -24,7 +24,7 @@
         {{ message }}
       </div>
 
-      <div class="c-monitoror-tile--value" v-if="displayedMetric">
+      <div class="c-monitoror-tile--value" v-if="displayedMetric && !isContributions">
         {{ displayedMetric }}
       </div>
 
@@ -32,6 +32,14 @@
         <monitoror-sub-tile v-for="subTile in displayedSubTiles" :key="subTile.stateKey"
                             :config="subTile"></monitoror-sub-tile>
       </div>
+
+      <template v-if="isContributions && contributions && contributions.length > 0">
+        <monitoror-contributions-graph :values="contributions"
+                                       class="c-monitoror-tile--contributions"></monitoror-contributions-graph>
+        <div class="c-monitoror-tile--contributions-total">
+          {{ contributionsTotal }} contributions
+        </div>
+      </template>
 
       <monitoror-tile-icon :tile-type="type" class="c-monitoror-tile--icon"></monitoror-tile-icon>
 
@@ -72,12 +80,14 @@ import TileStatus from '@/enums/tileStatus'
 import TileType from '@/enums/tileType'
 import TileConfig from '@/types/tileConfig'
 
+import MonitororContributionsGraph from '@/components/ContributionsGraph.vue'
 import MonitororSubTile from '@/components/SubTile.vue'
 import MonitororTileIcon from '@/components/TileIcon.vue'
 
 export default defineComponent({
   name: 'MonitororTile',
   components: {
+    MonitororContributionsGraph,
     MonitororSubTile,
     MonitororTileIcon,
   },
@@ -135,6 +145,7 @@ export default defineComponent({
         'c-monitoror-tile__status-queued': isQueued.value,
         'c-monitoror-tile__status-canceled': status.value === TileStatus.Canceled,
         'c-monitoror-tile__status-action-required': status.value === TileStatus.ActionRequired,
+        'c-monitoror-tile__contributions': isContributions.value && isSucceeded.value,
       }
     })
 
@@ -184,6 +195,22 @@ export default defineComponent({
       }
 
       return state.value.message
+    })
+
+    const isContributions = computed((): boolean => {
+      return type.value === TileType.GiteaContributions || type.value === TileType.GitHubContributions
+    })
+
+    const contributions = computed((): number[] | undefined => {
+      if (state.value === undefined || state.value.metrics === undefined) {
+        return
+      }
+
+      return (state.value.metrics.values || []).map((value) => parseInt(value, 10) || 0)
+    })
+
+    const contributionsTotal = computed((): number => {
+      return (contributions.value || []).reduce((total, count) => total + count, 0)
     })
 
     const buildId = computed((): string | undefined => {
@@ -236,6 +263,11 @@ export default defineComponent({
 
       // metrics
       displayedMetric,
+
+      // contributions
+      isContributions,
+      contributions,
+      contributionsTotal,
     }
   },
 })
@@ -289,6 +321,13 @@ export default defineComponent({
 
     &__status-action-required {
       --tile-background: var(--color-action-required);
+    }
+
+    // Contributions calendar: dark neutral tile with green cells, like profile pages
+    &__contributions {
+      --tile-background: #161b22;
+
+      color: #e6edf3;
     }
   }
 
@@ -347,8 +386,17 @@ export default defineComponent({
     transform: translate(-50%, -50%);
   }
 
+  .c-monitoror-tile--contributions {
+    position: absolute;
+    top: 60px;
+    right: var(--tile-padding);
+    bottom: 65px;
+    left: var(--tile-padding);
+  }
+
   .c-monitoror-tile__group .c-monitoror-tile--message,
   .c-monitoror-tile--finished-at,
+  .c-monitoror-tile--contributions-total,
   .c-monitoror-tile--progress-time {
     position: absolute;
     right: var(--tile-padding);

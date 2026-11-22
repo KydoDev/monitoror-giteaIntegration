@@ -5,6 +5,9 @@ import (
 	"os"
 	"time"
 
+	// Embed the time zone database: the TZ variable must work in minimal images (contributions calendar days)
+	_ "time/tzdata"
+
 	"github.com/monitoror/monitoror/cli"
 	"github.com/monitoror/monitoror/cli/commands"
 	"github.com/monitoror/monitoror/cli/printer"

@@ -224,3 +224,61 @@ func TestDelivery_GetPullRequest_Error(t *testing.T) {
 		mockUsecase.AssertExpectations(t)
 	}
 }
+
+func TestDelivery_GetContributions_Success(t *testing.T) {
+	ctx, res := initEcho()
+	ctx.QueryParams().Set("user", "test")
+	ctx.QueryParams().Set("weeks", "12")
+
+	tile := coreModels.NewTile(api.GiteaContributionsTileType).WithMetrics(coreModels.NumberUnit)
+	tile.Status = coreModels.SuccessStatus
+	tile.Metrics.Values = []string{"0", "3"}
+
+	mockUsecase := new(mocks.Usecase)
+	mockUsecase.On("Contributions", &models.ContributionsParams{User: "test", Weeks: 12}).Return(tile, nil)
+
+	if assert.NoError(t, NewGiteaDelivery(mockUsecase).GetContributions(ctx)) {
+		assert.Equal(t, http.StatusOK, res.Code)
+
+		result := &coreModels.Tile{}
+		assert.NoError(t, json.Unmarshal(res.Body.Bytes(), result))
+		assert.Equal(t, tile, result)
+		mockUsecase.AssertExpectations(t)
+	}
+}
+
+func TestDelivery_GetContributions_InvalidParams(t *testing.T) {
+	// Init
+	ctx, _ := initEcho()
+
+	ctx.QueryParams().Set("user", "test")
+	ctx.QueryParams().Set("weeks", "53")
+
+	mockUsecase := new(mocks.Usecase)
+	handler := NewGiteaDelivery(mockUsecase)
+
+	// Test
+	err := handler.GetContributions(ctx)
+	if assert.Error(t, err) {
+		assert.IsType(t, &coreModels.MonitororError{}, err)
+		mockUsecase.AssertNumberOfCalls(t, "Contributions", 0)
+		mockUsecase.AssertExpectations(t)
+	}
+}
+
+func TestDelivery_GetContributions_Error(t *testing.T) {
+	// Init
+	ctx, _ := initEcho()
+
+	ctx.QueryParams().Set("user", "test")
+
+	mockUsecase := new(mocks.Usecase)
+	mockUsecase.On("Contributions", Anything).Return(nil, errors.New("boom"))
+	handler := NewGiteaDelivery(mockUsecase)
+
+	// Test
+	if assert.Error(t, handler.GetContributions(ctx)) {
+		mockUsecase.AssertNumberOfCalls(t, "Contributions", 1)
+		mockUsecase.AssertExpectations(t)
+	}
+}

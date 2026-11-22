@@ -9,9 +9,10 @@ import (
 )
 
 const (
-	GiteaCountTileType       coreModels.TileType = "GITEA-COUNT"
-	GiteaChecksTileType      coreModels.TileType = "GITEA-CHECKS"
-	GiteaPullRequestTileType coreModels.TileType = "GITEA-PULLREQUEST"
+	GiteaCountTileType         coreModels.TileType = "GITEA-COUNT"
+	GiteaChecksTileType        coreModels.TileType = "GITEA-CHECKS"
+	GiteaPullRequestTileType   coreModels.TileType = "GITEA-PULLREQUEST"
+	GiteaContributionsTileType coreModels.TileType = "GITEA-CONTRIBUTIONS"
 )
 
 type (
@@ -19,6 +20,7 @@ type (
 		Count(params *models.CountParams) (*coreModels.Tile, error)
 		Checks(params *models.ChecksParams) (*coreModels.Tile, error)
 		PullRequest(params *models.PullRequestParams) (*coreModels.Tile, error)
+		Contributions(params *models.ContributionsParams) (*coreModels.Tile, error)
 
 		PullRequestsGenerator(params interface{}) ([]uiConfigModels.GeneratedTile, error)
 	}

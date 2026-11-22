@@ -611,3 +611,43 @@ func TestConvertChecks_ID(t *testing.T) {
 	_, _, _, id := convertChecks(checks)
 	assert.Equal(t, "b103a99f8ef3da68771355b76aa05ccf", id)
 }
+
+func TestContributions_Success(t *testing.T) {
+	now := time.Date(2026, time.November, 17, 23, 0, 0, 0, time.UTC) // Tuesday
+	from := time.Date(2026, time.November, 8, 0, 0, 0, 0, time.UTC)
+
+	mockRepository := new(mocks.Repository)
+	mockRepository.On("GetContributions", "john", from, now).Return([]models.Contribution{
+		{Date: "2026-11-08", Count: 1},
+		{Date: "2026-11-15", Count: 3},
+		{Date: "2026-11-17", Count: 4},
+	}, nil)
+
+	gu := NewGithubUsecase(mockRepository).(*githubUsecase)
+	gu.now = func() time.Time { return now }
+
+	tile, err := gu.Contributions(&models.ContributionsParams{User: "john", Weeks: 2})
+	if assert.NoError(t, err) {
+		assert.Equal(t, api.GithubContributionsTileType, tile.Type)
+		assert.Equal(t, coreModels.SuccessStatus, tile.Status)
+		assert.Equal(t, "john", tile.Label)
+		assert.Equal(t, []string{"1", "0", "0", "0", "0", "0", "0", "3", "0", "4"}, tile.Metrics.Values)
+		mockRepository.AssertExpectations(t)
+	}
+}
+
+func TestContributions_Error(t *testing.T) {
+	mockRepository := new(mocks.Repository)
+	mockRepository.On("GetContributions", "john", AnythingOfType("time.Time"), AnythingOfType("time.Time")).
+		Return(nil, errors.New("boom"))
+
+	gu := NewGithubUsecase(mockRepository)
+
+	tile, err := gu.Contributions(&models.ContributionsParams{User: "john"})
+	if assert.Error(t, err) {
+		assert.Nil(t, tile)
+		assert.IsType(t, &coreModels.MonitororError{}, err)
+		assert.Equal(t, "unable to load contributions", err.Error())
+		mockRepository.AssertExpectations(t)
+	}
+}

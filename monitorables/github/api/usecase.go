@@ -9,9 +9,10 @@ import (
 )
 
 const (
-	GithubCountTileType       coreModels.TileType = "GITHUB-COUNT"
-	GithubChecksTileType      coreModels.TileType = "GITHUB-CHECKS"
-	GithubPullRequestTileType coreModels.TileType = "GITHUB-PULLREQUEST"
+	GithubCountTileType         coreModels.TileType = "GITHUB-COUNT"
+	GithubChecksTileType        coreModels.TileType = "GITHUB-CHECKS"
+	GithubPullRequestTileType   coreModels.TileType = "GITHUB-PULLREQUEST"
+	GithubContributionsTileType coreModels.TileType = "GITHUB-CONTRIBUTIONS"
 )
 
 type (
@@ -19,6 +20,7 @@ type (
 		Count(params *models.CountParams) (*coreModels.Tile, error)
 		Checks(params *models.ChecksParams) (*coreModels.Tile, error)
 		PullRequest(params *models.PullRequestParams) (*coreModels.Tile, error)
+		Contributions(params *models.ContributionsParams) (*coreModels.Tile, error)
 
 		PullRequestsGenerator(params interface{}) ([]uiConfigModels.GeneratedTile, error)
 	}

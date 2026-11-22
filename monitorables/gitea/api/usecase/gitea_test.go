@@ -375,3 +375,56 @@ func TestConvertChecks_DeduplicateAndOrder(t *testing.T) {
 	assert.Equal(t, refTime.Add(time.Minute), *finishedAt)
 	assert.Equal(t, hash.GetMD5Hash("-2-3-1"), id)
 }
+
+func TestContributions_Success(t *testing.T) {
+	location := time.FixedZone("UTC+1", 3600)
+	mockRepository := new(mocks.Repository)
+	mockRepository.On("GetContributions", "john").Return([]models.Contribution{
+		{Time: time.Date(2026, time.November, 14, 23, 30, 0, 0, time.UTC), Count: 2}, // Sunday 15 at 00:30 in UTC+1
+		{Time: time.Date(2026, time.November, 15, 10, 0, 0, 0, location), Count: 1},
+		{Time: time.Date(2026, time.November, 17, 22, 59, 0, 0, location), Count: 4},
+		{Time: time.Date(2026, time.November, 1, 10, 0, 0, 0, location), Count: 9}, // before the displayed weeks
+	}, nil)
+
+	gu := NewGiteaUsecase(mockRepository).(*giteaUsecase)
+	gu.now = func() time.Time { return time.Date(2026, time.November, 17, 23, 0, 0, 0, location) } // Tuesday
+
+	tile, err := gu.Contributions(&models.ContributionsParams{User: "john", Weeks: 2})
+	if assert.NoError(t, err) {
+		assert.Equal(t, api.GiteaContributionsTileType, tile.Type)
+		assert.Equal(t, coreModels.SuccessStatus, tile.Status)
+		assert.Equal(t, "john", tile.Label)
+		assert.Equal(t, coreModels.NumberUnit, tile.Metrics.Unit)
+		// Sunday 8 to Saturday 14, then Sunday 15 to Tuesday 17
+		assert.Equal(t, []string{"0", "0", "0", "0", "0", "0", "0", "3", "0", "4"}, tile.Metrics.Values)
+		mockRepository.AssertExpectations(t)
+	}
+}
+
+func TestContributions_DefaultWeeks(t *testing.T) {
+	mockRepository := new(mocks.Repository)
+	mockRepository.On("GetContributions", "john").Return([]models.Contribution{}, nil)
+
+	gu := NewGiteaUsecase(mockRepository).(*giteaUsecase)
+	gu.now = func() time.Time { return time.Date(2026, time.November, 21, 12, 0, 0, 0, time.UTC) } // Saturday
+
+	tile, err := gu.Contributions(&models.ContributionsParams{User: "john"})
+	if assert.NoError(t, err) {
+		assert.Len(t, tile.Metrics.Values, 26*7)
+	}
+}
+
+func TestContributions_Error(t *testing.T) {
+	mockRepository := new(mocks.Repository)
+	mockRepository.On("GetContributions", AnythingOfType("string")).Return(nil, errors.New("boom"))
+
+	gu := NewGiteaUsecase(mockRepository)
+
+	tile, err := gu.Contributions(&models.ContributionsParams{User: "john"})
+	if assert.Error(t, err) {
+		assert.Nil(t, tile)
+		assert.IsType(t, &coreModels.MonitororError{}, err)
+		assert.Equal(t, "unable to load contributions", err.Error())
+		mockRepository.AssertExpectations(t)
+	}
+}

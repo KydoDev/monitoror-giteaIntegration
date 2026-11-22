@@ -222,3 +222,62 @@ func TestDelivery_GetPullRequest_Error(t *testing.T) {
 		mockUsecase.AssertExpectations(t)
 	}
 }
+
+func TestDelivery_GetContributions_Success(t *testing.T) {
+	// Init
+	ctx, res := initEcho()
+
+	ctx.QueryParams().Set("user", "test")
+	ctx.QueryParams().Set("weeks", "12")
+
+	tile := coreModels.NewTile(api.GithubContributionsTileType)
+	tile.Status = coreModels.SuccessStatus
+
+	mockUsecase := new(mocks.Usecase)
+	mockUsecase.On("Contributions", &models.ContributionsParams{User: "test", Weeks: 12}).Return(tile, nil)
+	handler := NewGithubDelivery(mockUsecase)
+
+	// Expected
+	json, err := json.Marshal(tile)
+	assert.NoError(t, err, "unable to marshal tile")
+
+	// Test
+	if assert.NoError(t, handler.GetContributions(ctx)) {
+		assert.Equal(t, http.StatusOK, res.Code)
+		assert.Equal(t, string(json), strings.TrimSpace(res.Body.String()))
+		mockUsecase.AssertNumberOfCalls(t, "Contributions", 1)
+		mockUsecase.AssertExpectations(t)
+	}
+}
+
+func TestDelivery_GetContributions_InvalidParams(t *testing.T) {
+	// Init
+	ctx, _ := initEcho()
+
+	ctx.QueryParams().Set("weeks", "12")
+
+	mockUsecase := new(mocks.Usecase)
+	handler := NewGithubDelivery(mockUsecase)
+
+	// Test
+	if assert.Error(t, handler.GetContributions(ctx)) {
+		mockUsecase.AssertNumberOfCalls(t, "Contributions", 0)
+	}
+}
+
+func TestDelivery_GetContributions_Error(t *testing.T) {
+	// Init
+	ctx, _ := initEcho()
+
+	ctx.QueryParams().Set("user", "test")
+
+	mockUsecase := new(mocks.Usecase)
+	mockUsecase.On("Contributions", Anything).Return(nil, errors.New("boom"))
+	handler := NewGithubDelivery(mockUsecase)
+
+	// Test
+	if assert.Error(t, handler.GetContributions(ctx)) {
+		mockUsecase.AssertNumberOfCalls(t, "Contributions", 1)
+		mockUsecase.AssertExpectations(t)
+	}
+}

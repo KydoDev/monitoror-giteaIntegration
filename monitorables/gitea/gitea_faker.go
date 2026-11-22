@@ -20,9 +20,10 @@ type Monitorable struct {
 	store *store.Store
 
 	// Config tile settings
-	countTileEnabler       registry.TileEnabler
-	checksTileEnabler      registry.TileEnabler
-	pullRequestTileEnabler registry.TileEnabler
+	countTileEnabler         registry.TileEnabler
+	checksTileEnabler        registry.TileEnabler
+	pullRequestTileEnabler   registry.TileEnabler
+	contributionsTileEnabler registry.TileEnabler
 }
 
 func NewMonitorable(store *store.Store) *Monitorable {
@@ -33,6 +34,7 @@ func NewMonitorable(store *store.Store) *Monitorable {
 	m.countTileEnabler = store.Registry.RegisterTile(api.GiteaCountTileType, versions.Version2001, m.GetVariantsNames())
 	m.checksTileEnabler = store.Registry.RegisterTile(api.GiteaChecksTileType, versions.Version2001, m.GetVariantsNames())
 	m.pullRequestTileEnabler = store.Registry.RegisterTile(api.GiteaPullRequestTileType, versions.Version2001, m.GetVariantsNames())
+	m.contributionsTileEnabler = store.Registry.RegisterTile(api.GiteaContributionsTileType, versions.Version2001, m.GetVariantsNames())
 
 	return m
 }
@@ -50,9 +52,11 @@ func (m *Monitorable) Enable(variantName coreModels.VariantName) {
 	routeCount := routeGroup.GET("/count", delivery.GetCount)
 	routeChecks := routeGroup.GET("/checks", delivery.GetChecks)
 	routePullRequest := routeGroup.GET("/pullrequest", delivery.GetPullRequest)
+	routeContributions := routeGroup.GET("/contributions", delivery.GetContributions)
 
 	// EnableTile data for config hydration
 	m.countTileEnabler.Enable(variantName, &giteaModels.CountParams{}, routeCount.Path)
 	m.checksTileEnabler.Enable(variantName, &giteaModels.ChecksParams{}, routeChecks.Path)
 	m.pullRequestTileEnabler.Enable(variantName, &giteaModels.PullRequestParams{}, routePullRequest.Path)
+	m.contributionsTileEnabler.Enable(variantName, &giteaModels.ContributionsParams{}, routeContributions.Path)
 }

@@ -2,7 +2,11 @@
 
 package api
 
-import "github.com/monitoror/monitoror/monitorables/github/api/models"
+import (
+	"time"
+
+	"github.com/monitoror/monitoror/monitorables/github/api/models"
+)
 
 type (
 	Repository interface {
@@ -11,5 +15,6 @@ type (
 		GetPullRequest(owner, repository string, id int) (*models.PullRequest, error)
 		GetPullRequests(owner, repository string) ([]models.PullRequest, error)
 		GetCommit(owner, repository, sha string) (*models.Commit, error)
+		GetContributions(user string, from, to time.Time) ([]models.Contribution, error)
 	}
 )

@@ -342,3 +342,30 @@ func TestGiteaRepository_GetCommit_NameFallback(t *testing.T) {
 		assert.Equal(t, "", commit.Author.AvatarURL)
 	}
 }
+
+func TestGiteaRepository_GetContributions_Success(t *testing.T) {
+	repository := initRepository(t, "", func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/api/v1/users/john%20doe/heatmap", r.URL.EscapedPath())
+		_, _ = fmt.Fprint(w, `[{"timestamp":1795347000,"contributions":9},{"timestamp":1795349700,"contributions":1}]`)
+	})
+
+	contributions, err := repository.GetContributions("john doe")
+	if assert.NoError(t, err) {
+		assert.Equal(t, []models.Contribution{
+			{Time: time.Unix(1795347000, 0), Count: 9},
+			{Time: time.Unix(1795349700, 0), Count: 1},
+		}, contributions)
+	}
+}
+
+func TestGiteaRepository_GetContributions_Error(t *testing.T) {
+	repository := initRepository(t, "", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+		_, _ = fmt.Fprint(w, `{"message":"user redirect does not exist [name: nobody]"}`)
+	})
+
+	_, err := repository.GetContributions("nobody")
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "status 404")
+	}
+}

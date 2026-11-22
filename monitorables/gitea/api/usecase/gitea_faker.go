@@ -169,6 +169,15 @@ func (gu *giteaUsecase) PullRequest(params *models.PullRequestParams) (tile *cor
 	return tile, nil
 }
 
+func (gu *giteaUsecase) Contributions(params *models.ContributionsParams) (*coreModels.Tile, error) {
+	tile := coreModels.NewTile(api.GiteaContributionsTileType).WithMetrics(coreModels.NumberUnit)
+	tile.Label = params.User
+	tile.Status = coreModels.SuccessStatus
+	tile.Metrics.Values = faker.Contributions(params.User, params.Weeks)
+
+	return tile, nil
+}
+
 func (gu *giteaUsecase) PullRequestsGenerator(params interface{}) ([]uiConfigModels.GeneratedTile, error) {
 	panic("unimplemented")
 }

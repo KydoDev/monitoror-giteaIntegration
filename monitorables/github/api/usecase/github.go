@@ -12,6 +12,7 @@ import (
 	coreModels "github.com/monitoror/monitoror/models"
 	"github.com/monitoror/monitoror/monitorables/github/api"
 	"github.com/monitoror/monitoror/monitorables/github/api/models"
+	"github.com/monitoror/monitoror/pkg/contributions"
 	"github.com/monitoror/monitoror/pkg/git"
 	"github.com/monitoror/monitoror/pkg/hash"
 
@@ -24,6 +25,9 @@ type (
 
 		// builds cache. used for save small history of build for stats
 		buildsCache *cache.BuildCache
+
+		// now returns the current time, its location defines the days of the contributions calendar
+		now func() time.Time
 	}
 )
 
@@ -43,8 +47,9 @@ const buildCacheSize = 5
 
 func NewGithubUsecase(repository api.Repository) api.Usecase {
 	return &githubUsecase{
-		repository,
-		cache.NewBuildCache(buildCacheSize),
+		repository:  repository,
+		buildsCache: cache.NewBuildCache(buildCacheSize),
+		now:         time.Now,
 	}
 }
 
@@ -128,6 +133,30 @@ func (gu *githubUsecase) PullRequest(params *models.PullRequestParams) (*coreMod
 	if tile.Status == coreModels.FailedStatus {
 		tile.Build.Author = &pullRequest.Author
 	}
+
+	return tile, nil
+}
+
+func (gu *githubUsecase) Contributions(params *models.ContributionsParams) (*coreModels.Tile, error) {
+	tile := coreModels.NewTile(api.GithubContributionsTileType).WithMetrics(coreModels.NumberUnit)
+	tile.Label = params.User
+
+	now := gu.now()
+	days := contributions.Days(now, params.Weeks)
+
+	items, err := gu.repository.GetContributions(params.User, days[0], now)
+	if err != nil {
+		return nil, &coreModels.MonitororError{Err: err, Tile: tile, Message: "unable to load contributions"}
+	}
+
+	// GitHub returns one row per calendar day
+	counts := make(map[string]int)
+	for _, item := range items {
+		counts[item.Date] += item.Count
+	}
+
+	tile.Status = coreModels.SuccessStatus
+	tile.Metrics.Values = contributions.Values(days, counts)
 
 	return tile, nil
 }

@@ -3,6 +3,8 @@
 package mocks
 
 import (
+	time "time"
+
 	models "github.com/monitoror/monitoror/monitorables/github/api/models"
 	mock "github.com/stretchr/testify/mock"
 )
@@ -65,6 +67,36 @@ func (_m *Repository) GetCommit(owner string, repository string, sha string) (*m
 
 	if rf, ok := ret.Get(1).(func(string, string, string) error); ok {
 		r1 = rf(owner, repository, sha)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// GetContributions provides a mock function with given fields: user, from, to
+func (_m *Repository) GetContributions(user string, from time.Time, to time.Time) ([]models.Contribution, error) {
+	ret := _m.Called(user, from, to)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetContributions")
+	}
+
+	var r0 []models.Contribution
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string, time.Time, time.Time) ([]models.Contribution, error)); ok {
+		return rf(user, from, to)
+	}
+	if rf, ok := ret.Get(0).(func(string, time.Time, time.Time) []models.Contribution); ok {
+		r0 = rf(user, from, to)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]models.Contribution)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(string, time.Time, time.Time) error); ok {
+		r1 = rf(user, from, to)
 	} else {
 		r1 = ret.Error(1)
 	}

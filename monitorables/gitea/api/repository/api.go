@@ -66,6 +66,11 @@ type (
 		} `json:"commit"`
 		Author *user `json:"author"` // nil when the commit email is not linked to a Gitea user
 	}
+
+	heatmapItem struct {
+		Timestamp     int64 `json:"timestamp"`
+		Contributions int   `json:"contributions"`
+	}
 )
 
 // PageSize is the number of items requested per page. 50 is Gitea's default MAX_RESPONSE_ITEMS.
@@ -228,6 +233,22 @@ func (r *giteaRepository) GetCommit(owner, repository, sha string) (*models.Comm
 	}
 
 	return c, nil
+}
+
+// GetContributions loads the activity heatmap of a user (about one year, grouped in 15 minutes slots).
+// Gitea returns 404 when the user does not exist, is not visible, or when the heatmap is disabled.
+func (r *giteaRepository) GetContributions(user string) ([]models.Contribution, error) {
+	var items []heatmapItem
+	if _, err := r.get(fmt.Sprintf("/users/%s/heatmap", url.PathEscape(user)), nil, &items); err != nil {
+		return nil, err
+	}
+
+	contributions := make([]models.Contribution, 0, len(items))
+	for _, item := range items {
+		contributions = append(contributions, models.Contribution{Time: time.Unix(item.Timestamp, 0), Count: item.Contributions})
+	}
+
+	return contributions, nil
 }
 
 func (r *giteaRepository) get(path string, query url.Values, result interface{}) (http.Header, error) {

@@ -169,6 +169,15 @@ func (gu *githubUsecase) PullRequest(params *models.PullRequestParams) (tile *co
 	return tile, nil
 }
 
+func (gu *githubUsecase) Contributions(params *models.ContributionsParams) (*coreModels.Tile, error) {
+	tile := coreModels.NewTile(api.GithubContributionsTileType).WithMetrics(coreModels.NumberUnit)
+	tile.Label = params.User
+	tile.Status = coreModels.SuccessStatus
+	tile.Metrics.Values = faker.Contributions(params.User, params.Weeks)
+
+	return tile, nil
+}
+
 func (gu *githubUsecase) PullRequestsGenerator(params interface{}) ([]uiConfigModels.GeneratedTile, error) {
 	panic("unimplemented")
 }

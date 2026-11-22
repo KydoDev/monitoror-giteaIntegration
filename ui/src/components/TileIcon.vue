@@ -30,11 +30,13 @@ export default defineComponent({
         case TileType.GiteaChecks:
         case TileType.GiteaPullRequest:
         case TileType.GiteaCount:
+        case TileType.GiteaContributions:
           return TileIconId.Gitea
 
         case TileType.GitHubChecks:
         case TileType.GitHubPullRequest:
         case TileType.GitHubCount:
+        case TileType.GitHubContributions:
           return TileIconId.GitHub
 
         case TileType.GitLabIssues:

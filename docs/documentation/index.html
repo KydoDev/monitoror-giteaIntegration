@@ -94,6 +94,7 @@
               <li><a href="#tile-gitea-checks">GITEA-CHECKS</a></li>
               <li><a href="#tile-gitea-pullrequest">GITEA-PULLREQUEST</a></li>
               <li><a href="#tile-generate-gitea-pullrequest"><span class="tag-generate">GENERATE:</span>GITEA-PULLREQUEST</a></li>
+              <li><a href="#tile-gitea-contributions">GITEA-CONTRIBUTIONS</a></li>
             </ul>
           </li>
           <li>
@@ -108,6 +109,7 @@
               <li><a href="#tile-github-checks">GITHUB-CHECKS</a></li>
               <li><a href="#tile-github-pullrequest">GITHUB-PULLREQUEST</a></li>
               <li><a href="#tile-generate-github-pullrequest"><span class="tag-generate">GENERATE:</span>GITHUB-PULLREQUEST</a></li>
+              <li><a href="#tile-github-contributions">GITHUB-CONTRIBUTIONS</a></li>
             </ul>
           </li>
           <li>
@@ -1236,6 +1238,51 @@ MO_MONITORABLE_GITEA_SSLVERIFY=true
 }
         </code></pre>
       </div>
+
+      <h4 id="tile-gitea-contributions">GITEA-CONTRIBUTIONS</h4>
+
+      <p>
+        Show the contributions calendar of a Gitea user, like the one of the profile page,
+        with the total number of contributions of the period. Each column is a week, from Sunday to Saturday.
+        Use <code>columnSpan</code> to display more weeks with bigger cells.
+      </p>
+
+      <p class="note">
+        <span class="tag">Note</span>
+        Requires UI configuration <code>"version": "2.1"</code> or higher.<br>
+        Days are computed in the time zone of the Monitoror server: set the <code>TZ</code> environment variable
+        (for example <code>TZ=Europe/Rome</code>) when it differs from yours. The user heatmap must be enabled on the
+        Gitea instance (<code>ENABLE_USER_HEATMAP</code>, enabled by default).
+      </p>
+
+      <h5 class="m-documentation--configuration-side-title">UI configuration</h5>
+
+      <dl>
+        <dt><code>user</code> <code class="type">string</code> <span class="required">required</span></dt>
+        <dd>
+          Gitea user name (from URL)
+        </dd>
+
+        <dt><code>weeks</code> <code class="type">number</code></dt>
+        <dd>
+          Number of weeks to display, from 1 to 52 <br>
+          <span class="tag">Default:</span> <code>26</code>
+        </dd>
+      </dl>
+
+      <div class="m-documentation--example-and-demo">
+        <pre class="example"><code class="language-json">
+{
+  "type": "GITEA-CONTRIBUTIONS",
+  "label": "My contributions",
+  "columnSpan": 2,
+  "params": {
+    "user": "johndoe",
+    "weeks": 26
+  }
+}
+        </code></pre>
+      </div>
     </div>
 
     <div class="m-documentation--block">
@@ -1548,6 +1595,49 @@ MO_MONITORABLE_GITHUB_COUNTCACHEEXPIRATION=30000
   "params": {
     "owner": "monitoror",
     "repository": "monitoror"
+  }
+}
+        </code></pre>
+      </div>
+
+      <h4 id="tile-github-contributions">GITHUB-CONTRIBUTIONS</h4>
+
+      <p>
+        Show the contributions calendar of a GitHub user, like the one of the profile page,
+        with the total number of contributions of the period. Each column is a week, from Sunday to Saturday.
+        Use <code>columnSpan</code> to display more weeks with bigger cells.
+      </p>
+
+      <p class="note">
+        <span class="tag">Note</span>
+        Requires UI configuration <code>"version": "2.1"</code> or higher.<br>
+        Uses the GitHub GraphQL API, which always requires a token.
+      </p>
+
+      <h5 class="m-documentation--configuration-side-title">UI configuration</h5>
+
+      <dl>
+        <dt><code>user</code> <code class="type">string</code> <span class="required">required</span></dt>
+        <dd>
+          GitHub user login (from URL)
+        </dd>
+
+        <dt><code>weeks</code> <code class="type">number</code></dt>
+        <dd>
+          Number of weeks to display, from 1 to 52 <br>
+          <span class="tag">Default:</span> <code>26</code>
+        </dd>
+      </dl>
+
+      <div class="m-documentation--example-and-demo">
+        <pre class="example"><code class="language-json">
+{
+  "type": "GITHUB-CONTRIBUTIONS",
+  "label": "My contributions",
+  "columnSpan": 2,
+  "params": {
+    "user": "octocat",
+    "weeks": 26
   }
 }
         </code></pre>

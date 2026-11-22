@@ -12,6 +12,7 @@ import (
 	coreModels "github.com/monitoror/monitoror/models"
 	"github.com/monitoror/monitoror/monitorables/gitea/api"
 	"github.com/monitoror/monitoror/monitorables/gitea/api/models"
+	"github.com/monitoror/monitoror/pkg/contributions"
 	"github.com/monitoror/monitoror/pkg/git"
 	"github.com/monitoror/monitoror/pkg/hash"
 
@@ -24,6 +25,9 @@ type (
 
 		// builds cache. used for save small history of build for stats
 		buildsCache *cache.BuildCache
+
+		// now returns the current time, its location defines the days of the contributions calendar
+		now func() time.Time
 	}
 )
 
@@ -43,8 +47,9 @@ const buildCacheSize = 5
 
 func NewGiteaUsecase(repository api.Repository) api.Usecase {
 	return &giteaUsecase{
-		repository,
-		cache.NewBuildCache(buildCacheSize),
+		repository:  repository,
+		buildsCache: cache.NewBuildCache(buildCacheSize),
+		now:         time.Now,
 	}
 }
 
@@ -127,6 +132,28 @@ func (gu *giteaUsecase) PullRequest(params *models.PullRequestParams) (*coreMode
 	if tile.Status == coreModels.FailedStatus {
 		tile.Build.Author = &pullRequest.Author
 	}
+
+	return tile, nil
+}
+
+func (gu *giteaUsecase) Contributions(params *models.ContributionsParams) (*coreModels.Tile, error) {
+	tile := coreModels.NewTile(api.GiteaContributionsTileType).WithMetrics(coreModels.NumberUnit)
+	tile.Label = params.User
+
+	items, err := gu.repository.GetContributions(params.User)
+	if err != nil {
+		return nil, &coreModels.MonitororError{Err: err, Tile: tile, Message: "unable to load contributions"}
+	}
+
+	// Gitea groups contributions in 15 minutes slots: sum them per day, in the location of the server
+	now := gu.now()
+	counts := make(map[string]int)
+	for _, item := range items {
+		counts[contributions.DayKey(item.Time.In(now.Location()))] += item.Count
+	}
+
+	tile.Status = coreModels.SuccessStatus
+	tile.Metrics.Values = contributions.Values(contributions.Days(now, params.Weeks), counts)
 
 	return tile, nil
 }

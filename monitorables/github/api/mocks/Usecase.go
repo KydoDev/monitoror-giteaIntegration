@@ -46,6 +46,36 @@ func (_m *Usecase) Checks(params *models.ChecksParams) (*monitorormodels.Tile, e
 	return r0, r1
 }
 
+// Contributions provides a mock function with given fields: params
+func (_m *Usecase) Contributions(params *models.ContributionsParams) (*monitorormodels.Tile, error) {
+	ret := _m.Called(params)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Contributions")
+	}
+
+	var r0 *monitorormodels.Tile
+	var r1 error
+	if rf, ok := ret.Get(0).(func(*models.ContributionsParams) (*monitorormodels.Tile, error)); ok {
+		return rf(params)
+	}
+	if rf, ok := ret.Get(0).(func(*models.ContributionsParams) *monitorormodels.Tile); ok {
+		r0 = rf(params)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*monitorormodels.Tile)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(*models.ContributionsParams) error); ok {
+		r1 = rf(params)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // Count provides a mock function with given fields: params
 func (_m *Usecase) Count(params *models.CountParams) (*monitorormodels.Tile, error) {
 	ret := _m.Called(params)

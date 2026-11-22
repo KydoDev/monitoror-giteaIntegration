@@ -1,7 +1,12 @@
 package repository
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"strings"
@@ -26,8 +31,44 @@ type (
 		pullRequestService  gogithub.PullRequestService
 		gitService          gogithub.GitService
 
+		// GraphQL client, used for the contributions calendar (not available in the REST API)
+		httpClient *http.Client
+		graphqlURL string
+
 		config *config.Github
 	}
+
+	contributionsResponse struct {
+		Data struct {
+			User *struct {
+				ContributionsCollection struct {
+					ContributionCalendar struct {
+						Weeks []struct {
+							ContributionDays []struct {
+								Date              string `json:"date"`
+								ContributionCount int    `json:"contributionCount"`
+							} `json:"contributionDays"`
+						} `json:"weeks"`
+					} `json:"contributionCalendar"`
+				} `json:"contributionsCollection"`
+			} `json:"user"`
+		} `json:"data"`
+		Errors []struct {
+			Message string `json:"message"`
+		} `json:"errors"`
+	}
+)
+
+const (
+	contributionsQuery = `query($login: String!, $from: DateTime!, $to: DateTime!) {
+  user(login: $login) {
+    contributionsCollection(from: $from, to: $to) {
+      contributionCalendar { weeks { contributionDays { date contributionCount } } }
+    }
+  }
+}`
+	maxGraphqlBodySize    = 1 << 20 // 1 MiB
+	maxGraphqlErrorLength = 200
 )
 
 func NewGithubRepository(config *config.Github) api.Repository {
@@ -38,6 +79,9 @@ func NewGithubRepository(config *config.Github) api.Repository {
 			Source: oauth2.StaticTokenSource(&oauth2.Token{AccessToken: config.Token}),
 		},
 		Timeout: time.Duration(config.Timeout) * time.Millisecond,
+		// The oauth2 transport adds the token to every request, redirects included:
+		// only follow redirects to the same host, so the token never reaches another host
+		CheckRedirect: sameHostRedirect,
 	}
 
 	// Init Github Client
@@ -59,6 +103,8 @@ func NewGithubRepository(config *config.Github) api.Repository {
 		repositoriesService: client.Repositories,
 		pullRequestService:  client.PullRequests,
 		gitService:          client.Git,
+		httpClient:          httpClient,
+		graphqlURL:          graphqlURL(config.URL),
 		config:              config,
 	}
 }
@@ -196,4 +242,96 @@ func (gr *githubRepository) GetCommit(owner, repository, sha string) (*models.Co
 	}
 
 	return result, nil
+}
+
+// GetContributions loads the contributions calendar of a user between from and to (one year at most).
+func (gr *githubRepository) GetContributions(user string, from, to time.Time) ([]models.Contribution, error) {
+	body, err := json.Marshal(map[string]interface{}{
+		"query": contributionsQuery,
+		"variables": map[string]string{
+			"login": user,
+			"from":  from.Format(time.RFC3339),
+			"to":    to.Format(time.RFC3339),
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	request, err := http.NewRequest(http.MethodPost, gr.graphqlURL, bytes.NewReader(body))
+	if err != nil {
+		return nil, err
+	}
+	request.Header.Set("Content-Type", "application/json")
+
+	response, err := gr.httpClient.Do(request)
+	if err != nil {
+		return nil, err
+	}
+	defer response.Body.Close()
+
+	data, err := io.ReadAll(io.LimitReader(response.Body, maxGraphqlBodySize))
+	if err != nil {
+		return nil, err
+	}
+
+	if response.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("github graphql returned status %d: %s", response.StatusCode, truncate(strings.TrimSpace(string(data))))
+	}
+
+	result := &contributionsResponse{}
+	if err = json.Unmarshal(data, result); err != nil {
+		return nil, err
+	}
+
+	// GraphQL reports most errors with a 200 status
+	if len(result.Errors) > 0 {
+		return nil, fmt.Errorf("github graphql error: %s", truncate(result.Errors[0].Message))
+	}
+	if result.Data.User == nil {
+		return nil, fmt.Errorf("github user %q not found", user)
+	}
+
+	var contributions []models.Contribution
+	for _, week := range result.Data.User.ContributionsCollection.ContributionCalendar.Weeks {
+		for _, day := range week.ContributionDays {
+			contributions = append(contributions, models.Contribution{Date: day.Date, Count: day.ContributionCount})
+		}
+	}
+
+	return contributions, nil
+}
+
+// graphqlURL returns the GraphQL endpoint of a GitHub REST API URL:
+// https://api.github.com/ -> https://api.github.com/graphql
+// https://github.example.com/api/v3/ (GitHub Enterprise Server) -> https://github.example.com/api/graphql
+func graphqlURL(restURL string) string {
+	if strings.HasSuffix(restURL, "/api/v3/") {
+		return strings.TrimSuffix(restURL, "v3/") + "graphql"
+	}
+
+	return restURL + "graphql"
+}
+
+const maxRedirects = 10
+
+// sameHostRedirect follows redirects on the same scheme and host only (e.g. renamed repositories).
+// A redirect to another host returns the redirect response instead of following it.
+func sameHostRedirect(request *http.Request, via []*http.Request) error {
+	if len(via) >= maxRedirects {
+		return errors.New("stopped after 10 redirects")
+	}
+	if request.URL.Host != via[0].URL.Host || request.URL.Scheme != via[0].URL.Scheme {
+		return http.ErrUseLastResponse
+	}
+
+	return nil
+}
+
+func truncate(message string) string {
+	if len(message) <= maxGraphqlErrorLength {
+		return message
+	}
+
+	return strings.ToValidUTF8(message[:maxGraphqlErrorLength], "") + "..."
 }
