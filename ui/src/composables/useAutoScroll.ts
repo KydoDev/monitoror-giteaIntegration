@@ -5,6 +5,7 @@ const DEFAULT_BOTTOM_DELAY = 20 // seconds spent on the last page before going b
 const USER_PAUSE = 30 // seconds the cycle is paused after the user interacted with the page
 const AT_EDGE_TOLERANCE = 2 // px
 const USER_EVENTS = ['wheel', 'keydown', 'touchstart', 'mousedown']
+const SMOOTH_SCROLL_TIMEOUT = 2 // seconds before jumping to a position the smooth scroll did not reach
 
 // Slowly scrolls the page one screen at a time, then back to the top, forever.
 // The position is always read from the page, so manual scrolling and tiles wrapping on extra rows are supported.
@@ -16,8 +17,10 @@ export default function useAutoScroll(
   pageHeight: () => number,
 ) {
   let timer: ReturnType<typeof setTimeout> | undefined
+  let settleTimer: ReturnType<typeof setTimeout> | undefined
   let pausedUntil = 0
 
+  // Clears the next step (a smooth scroll in progress keeps its settle check)
   const clear = () => {
     if (timer !== undefined) {
       clearTimeout(timer)
@@ -31,6 +34,21 @@ export default function useAutoScroll(
 
   const isAtBottom = (max: number): boolean => {
     return window.scrollY >= max - AT_EDGE_TOLERANCE
+  }
+
+  // Smooth scrolling can stall (page without focus, throttled animations, layout changes during the animation):
+  // jump to the target when it was not reached
+  const scrollToTop = (top: number) => {
+    window.scrollTo({top, behavior: 'smooth'})
+    if (settleTimer !== undefined) {
+      clearTimeout(settleTimer)
+    }
+    settleTimer = setTimeout(() => {
+      settleTimer = undefined
+      if (Math.abs(window.scrollY - top) > AT_EDGE_TOLERANCE && Date.now() >= pausedUntil) {
+        window.scrollTo({top})
+      }
+    }, SMOOTH_SCROLL_TIMEOUT * 1000)
   }
 
   const schedule = (seconds: number) => {
@@ -58,13 +76,13 @@ export default function useAutoScroll(
     }
 
     if (isAtBottom(max)) {
-      window.scrollTo({top: 0, behavior: 'smooth'})
+      scrollToTop(0)
       schedule(topDelay())
       return
     }
 
     const target = Math.min(window.scrollY + Math.max(pageHeight(), 1), max)
-    window.scrollTo({top: target, behavior: 'smooth'})
+    scrollToTop(target)
     schedule(target >= max - AT_EDGE_TOLERANCE ? bottomDelay() : topDelay())
   }
 
@@ -78,6 +96,10 @@ export default function useAutoScroll(
 
   const stop = () => {
     clear()
+    if (settleTimer !== undefined) {
+      clearTimeout(settleTimer)
+      settleTimer = undefined
+    }
   }
 
   const apply = () => {
