@@ -369,3 +369,40 @@ func TestGiteaRepository_GetContributions_Error(t *testing.T) {
 		assert.Contains(t, err.Error(), "status 404")
 	}
 }
+
+func TestGiteaRepository_GetRepositories_Pagination(t *testing.T) {
+	defer func(size int) { PageSize = size }(PageSize)
+	PageSize = 2
+
+	repository := initRepository(t, "", func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/api/v1/users/my%20org/repos", r.URL.EscapedPath())
+		assert.Equal(t, "2", r.URL.Query().Get("limit"))
+		w.Header().Set("X-Total-Count", "3")
+		switch r.URL.Query().Get("page") {
+		case "1":
+			_, _ = fmt.Fprint(w, `[{"name":"api","default_branch":"main"},{"name":"old","default_branch":"master","archived":true}]`)
+		case "2":
+			_, _ = fmt.Fprint(w, `[{"name":"new","default_branch":"main","empty":true}]`)
+		default:
+			t.Errorf("unexpected page %s", r.URL.Query().Get("page"))
+		}
+	})
+
+	repositories, err := repository.GetRepositories("my org")
+	if assert.NoError(t, err) {
+		assert.Equal(t, []models.Repository{
+			{Name: "api", DefaultBranch: "main"},
+			{Name: "old", DefaultBranch: "master", Archived: true},
+			{Name: "new", DefaultBranch: "main", Empty: true},
+		}, repositories)
+	}
+}
+
+func TestGiteaRepository_GetRepositories_Error(t *testing.T) {
+	repository := initRepository(t, "", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	})
+
+	_, err := repository.GetRepositories("nobody")
+	assert.Error(t, err)
+}

@@ -12,5 +12,6 @@ type (
 		GetPullRequests(owner, repository string) ([]models.PullRequest, error)
 		GetCommit(owner, repository, sha string) (*models.Commit, error)
 		GetContributions(user string) ([]models.Contribution, error)
+		GetRepositories(owner string) ([]models.Repository, error)
 	}
 )

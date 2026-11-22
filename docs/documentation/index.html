@@ -95,6 +95,7 @@
               <li><a href="#tile-gitea-pullrequest">GITEA-PULLREQUEST</a></li>
               <li><a href="#tile-generate-gitea-pullrequest"><span class="tag-generate">GENERATE:</span>GITEA-PULLREQUEST</a></li>
               <li><a href="#tile-gitea-contributions">GITEA-CONTRIBUTIONS</a></li>
+              <li><a href="#tile-generate-gitea-checks"><span class="tag-generate">GENERATE:</span>GITEA-CHECKS</a></li>
             </ul>
           </li>
           <li>
@@ -1245,6 +1246,10 @@ MO_MONITORABLE_GITEA_SSLVERIFY=true
         Show the contributions calendar of a Gitea user, like the one of the profile page,
         with the total number of contributions of the period. Each column is a week, from Sunday to Saturday.
         Use <code>columnSpan</code> to display more weeks with bigger cells.
+      <h4 id="tile-generate-gitea-checks">GENERATE:<wbr>GITEA-CHECKS</h4>
+
+      <p>
+        Show the status of the default branch of each repository of a Gitea organization or user.
       </p>
 
       <p class="note">
@@ -1253,6 +1258,10 @@ MO_MONITORABLE_GITEA_SSLVERIFY=true
         Days are computed in the time zone of the Monitoror server: set the <code>TZ</code> environment variable
         (for example <code>TZ=Europe/Rome</code>) when it differs from yours. The user heatmap must be enabled on the
         Gitea instance (<code>ENABLE_USER_HEATMAP</code>, enabled by default).
+        This tile is a generator tile that will be replaced by N classic
+        <code><a href="#tile-gitea-checks">GITEA-CHECKS</a></code> tiles, labelled with the repository name. <br>
+        N being the number of repositories visible with the configured token, archived and empty repositories excluded.
+        Requires UI configuration <code>"version": "2.1"</code> or higher.
       </p>
 
       <h5 class="m-documentation--configuration-side-title">UI configuration</h5>
@@ -1279,6 +1288,18 @@ MO_MONITORABLE_GITEA_SSLVERIFY=true
   "params": {
     "user": "johndoe",
     "weeks": 26
+        <dt><code>owner</code> <code class="type">string</code> <span class="required">required</span></dt>
+        <dd>
+          Gitea organization or user (from URL)
+        </dd>
+      </dl>
+
+      <div class="m-documentation--example">
+        <pre class="example"><code class="language-json">
+{
+  "type": "GENERATE:GITEA-CHECKS",
+  "params": {
+    "owner": "gitea"
   }
 }
         </code></pre>

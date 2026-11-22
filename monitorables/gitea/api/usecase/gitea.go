@@ -158,6 +158,35 @@ func (gu *giteaUsecase) Contributions(params *models.ContributionsParams) (*core
 	return tile, nil
 }
 
+// ChecksGenerator generates one checks tile per repository of an owner, on its default branch.
+// Archived and empty repositories are skipped: they have no build to display.
+func (gu *giteaUsecase) ChecksGenerator(params interface{}) ([]uiConfigModels.GeneratedTile, error) {
+	generatorParams := params.(*models.ChecksGeneratorParams)
+
+	repositories, err := gu.repository.GetRepositories(generatorParams.Owner)
+	if err != nil {
+		return nil, &coreModels.MonitororError{Err: err, Message: "unable to load repositories"}
+	}
+
+	var results []uiConfigModels.GeneratedTile
+	for _, repository := range repositories {
+		if repository.Archived || repository.Empty || repository.DefaultBranch == "" {
+			continue
+		}
+
+		results = append(results, uiConfigModels.GeneratedTile{
+			Label: repository.Name,
+			Params: &models.ChecksParams{
+				Owner:      generatorParams.Owner,
+				Repository: repository.Name,
+				Ref:        repository.DefaultBranch,
+			},
+		})
+	}
+
+	return results, nil
+}
+
 func (gu *giteaUsecase) PullRequestsGenerator(params interface{}) ([]uiConfigModels.GeneratedTile, error) {
 	prParams := params.(*models.PullRequestGeneratorParams)
 

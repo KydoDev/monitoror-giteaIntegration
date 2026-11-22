@@ -27,6 +27,7 @@ type Monitorable struct {
 	pullRequestTileEnabler      registry.TileEnabler
 	contributionsTileEnabler    registry.TileEnabler
 	pullRequestGeneratorEnabler registry.GeneratorEnabler
+	checksGeneratorEnabler      registry.GeneratorEnabler
 }
 
 func NewMonitorable(store *store.Store) *Monitorable {
@@ -43,6 +44,7 @@ func NewMonitorable(store *store.Store) *Monitorable {
 	m.pullRequestTileEnabler = store.Registry.RegisterTile(api.GiteaPullRequestTileType, versions.Version2001, m.GetVariantsNames())
 	m.contributionsTileEnabler = store.Registry.RegisterTile(api.GiteaContributionsTileType, versions.Version2001, m.GetVariantsNames())
 	m.pullRequestGeneratorEnabler = store.Registry.RegisterGenerator(api.GiteaPullRequestTileType, versions.Version2001, m.GetVariantsNames())
+	m.checksGeneratorEnabler = store.Registry.RegisterGenerator(api.GiteaChecksTileType, versions.Version2001, m.GetVariantsNames())
 
 	return m
 }
@@ -91,4 +93,5 @@ func (m *Monitorable) Enable(variantName coreModels.VariantName) {
 	m.pullRequestTileEnabler.Enable(variantName, &giteaModels.PullRequestParams{}, routePullRequest.Path)
 	m.contributionsTileEnabler.Enable(variantName, &giteaModels.ContributionsParams{}, routeContributions.Path)
 	m.pullRequestGeneratorEnabler.Enable(variantName, &giteaModels.PullRequestGeneratorParams{}, usecase.PullRequestsGenerator)
+	m.checksGeneratorEnabler.Enable(variantName, &giteaModels.ChecksGeneratorParams{}, usecase.ChecksGenerator)
 }

@@ -428,3 +428,36 @@ func TestContributions_Error(t *testing.T) {
 		mockRepository.AssertExpectations(t)
 	}
 }
+
+func TestChecksGenerator_Error(t *testing.T) {
+	mockRepository := new(mocks.Repository)
+	mockRepository.On("GetRepositories", "test").Return(nil, errors.New("boom"))
+
+	gu := NewGiteaUsecase(mockRepository)
+
+	tiles, err := gu.ChecksGenerator(&models.ChecksGeneratorParams{Owner: "test"})
+	if assert.Error(t, err) {
+		assert.Nil(t, tiles)
+		assert.Equal(t, "unable to load repositories", err.Error())
+	}
+}
+
+func TestChecksGenerator_Success(t *testing.T) {
+	mockRepository := new(mocks.Repository)
+	mockRepository.On("GetRepositories", "test").Return([]models.Repository{
+		{Name: "api", DefaultBranch: "main"},
+		{Name: "old", DefaultBranch: "master", Archived: true},
+		{Name: "new", DefaultBranch: "main", Empty: true},
+		{Name: "web", DefaultBranch: "develop"},
+	}, nil)
+
+	gu := NewGiteaUsecase(mockRepository)
+
+	tiles, err := gu.ChecksGenerator(&models.ChecksGeneratorParams{Owner: "test"})
+	if assert.NoError(t, err) {
+		assert.Equal(t, []uiConfigModels.GeneratedTile{
+			{Label: "api", Params: &models.ChecksParams{Owner: "test", Repository: "api", Ref: "main"}},
+			{Label: "web", Params: &models.ChecksParams{Owner: "test", Repository: "web", Ref: "develop"}},
+		}, tiles)
+	}
+}
