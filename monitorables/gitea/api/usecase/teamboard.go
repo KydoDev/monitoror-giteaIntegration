@@ -25,16 +25,28 @@ const (
 	// activityWeeks is the period of the commit activity line of a repository
 	activityWeeks = 12
 
-	repositoriesTTL = 5 * time.Minute
-	aggregatesTTL   = time.Minute
+	repositoriesTTL  = 5 * time.Minute
+	aggregatesTTL    = time.Minute
+	searchTTL        = 30 * time.Second
+	runsTTL          = 20 * time.Second
+	ownerKindTTL     = 5 * time.Minute
+	contributionsTTL = 15 * time.Minute
+
+	// maxRunsRepositories bounds the repositories read one by one for the runs of a user
+	maxRunsRepositories = 30
+	// maxContributionsMembers bounds the heatmaps read for the contributions of an organization
+	maxContributionsMembers = 100
 )
+
+// errNotCached makes a cache lookup without load (errors are not cached)
+var errNotCached = errors.New("not cached")
 
 // PullRequests lists the open pull requests of every repository of an owner, oldest first.
 func (gu *giteaUsecase) PullRequests(params *models.ListParams) (*coreModels.Tile, error) {
 	tile := coreModels.NewTile(api.GiteaPullRequestsTileType).WithMetrics(coreModels.NumberUnit)
 	tile.Label = "Pull requests"
 
-	pullRequests, err := gu.repository.SearchIssues(params.Owner, "pulls")
+	pullRequests, err := gu.searchIssues(params.Owner, "pulls")
 	if err != nil {
 		return nil, &coreModels.MonitororError{Err: err, Tile: tile, Message: "unable to load pull requests"}
 	}
@@ -58,7 +70,7 @@ func (gu *giteaUsecase) Issues(params *models.IssuesListParams) (*coreModels.Til
 	tile := coreModels.NewTile(api.GiteaIssuesTileType).WithMetrics(coreModels.NumberUnit)
 	tile.Label = "Issues"
 
-	issues, err := gu.repository.SearchIssues(params.Owner, "issues")
+	issues, err := gu.searchIssues(params.Owner, "issues")
 	if err != nil {
 		return nil, &coreModels.MonitororError{Err: err, Tile: tile, Message: "unable to load issues"}
 	}
@@ -154,7 +166,14 @@ func (gu *giteaUsecase) Actions(params *models.ListParams) (*coreModels.Tile, er
 		}
 		switch status {
 		case coreModels.RunningStatus:
+			if run.StartedAt.IsZero() {
+				item.Detail = "running"
+				break
+			}
 			elapsed := now.Sub(run.StartedAt)
+			if elapsed < 0 {
+				elapsed = 0
+			}
 			item.Detail = humanizeDuration(elapsed)
 			if estimate := estimateDurationFromRuns(sameWorkflow(runs, run), []models.Run{run}); estimate != nil && *estimate > 0 {
 				item.Progress = pointer.ToInt(int(elapsed * 100 / *estimate))
@@ -256,6 +275,9 @@ func (gu *giteaUsecase) Repository(params *models.RepositoryParams) (*coreModels
 	if err != nil {
 		var monitororError *coreModels.MonitororError
 		if !errors.As(err, &monitororError) || monitororError.ErrorStatus != coreModels.UnknownStatus {
+			if monitororError != nil && monitororError.Tile != nil {
+				monitororError.Tile.Type = api.GiteaRepositoryTileType
+			}
 			return nil, err
 		}
 		// No CI on this repository: the summary is still useful
@@ -267,7 +289,7 @@ func (gu *giteaUsecase) Repository(params *models.RepositoryParams) (*coreModels
 	tile.Label = params.Repository
 
 	now := gu.now()
-	summary := gu.repositorySummary(params.Owner, params.Repository, ref, defaultOr(params.BugLabel, defaultBugLabel), now)
+	summary := gu.repositorySummary(params.Owner, params.Repository, ref, now)
 
 	if summary.weeklyCommits != nil {
 		tile.WithMetrics(coreModels.NumberUnit)
@@ -276,10 +298,17 @@ func (gu *giteaUsecase) Repository(params *models.RepositoryParams) (*coreModels
 	if summary.pullRequests != nil {
 		tile.Items = append(tile.Items, coreModels.TileItem{Label: "PR", Detail: strconv.Itoa(*summary.pullRequests)})
 	}
-	if summary.issues != nil {
-		tile.Items = append(tile.Items, coreModels.TileItem{Label: "Issues", Detail: strconv.Itoa(*summary.issues)})
-		if *summary.bugs > 0 {
-			tile.Items = append(tile.Items, coreModels.TileItem{Label: "Bugs", Detail: strconv.Itoa(*summary.bugs), Tag: "bug"})
+	if summary.issueLabels != nil {
+		bugLabel := defaultOr(params.BugLabel, defaultBugLabel)
+		bugs := 0
+		for _, labels := range summary.issueLabels {
+			if hasLabel(labels, bugLabel) {
+				bugs++
+			}
+		}
+		tile.Items = append(tile.Items, coreModels.TileItem{Label: "Issues", Detail: strconv.Itoa(len(summary.issueLabels))})
+		if bugs > 0 {
+			tile.Items = append(tile.Items, coreModels.TileItem{Label: "Bugs", Detail: strconv.Itoa(bugs), Tag: "bug"})
 		}
 	}
 	if summary.milestone != nil {
@@ -321,15 +350,15 @@ func (gu *giteaUsecase) RepositoriesGenerator(params interface{}) ([]uiConfigMod
 type repositorySummary struct {
 	weeklyCommits []string // commits per week, oldest first
 	pullRequests  *int
-	issues        *int
-	bugs          *int
+	issueLabels   [][]string // labels of each open issue, nil when not loaded
 	milestone     *models.Milestone
 }
 
 // repositorySummary loads the slow-changing parts of a repository tile, cached for a minute.
 // A part that fails to load is left out, the others are still shown.
-func (gu *giteaUsecase) repositorySummary(owner, repository, ref, bugLabel string, now time.Time) repositorySummary {
-	key := fmt.Sprintf("summary/%s/%s/%s/%s", owner, repository, ref, bugLabel)
+// The bug label is applied by the caller, so that it does not multiply the cached summaries.
+func (gu *giteaUsecase) repositorySummary(owner, repository, ref string, now time.Time) repositorySummary {
+	key := cacheKey("summary", owner, repository, ref)
 	value, _ := gu.aggregates.get(key, aggregatesTTL, now, func() (interface{}, error) {
 		var summary repositorySummary
 
@@ -343,14 +372,10 @@ func (gu *giteaUsecase) repositorySummary(owner, repository, ref, bugLabel strin
 		}
 
 		if issues, err := gu.repository.GetRepositoryIssues(owner, repository); err == nil {
-			bugs := 0
+			summary.issueLabels = make([][]string, 0, len(issues))
 			for _, issue := range issues {
-				if hasLabel(issue.Labels, bugLabel) {
-					bugs++
-				}
+				summary.issueLabels = append(summary.issueLabels, issue.Labels)
 			}
-			summary.issues = pointer.ToInt(len(issues))
-			summary.bugs = pointer.ToInt(bugs)
 		}
 
 		if milestones, err := gu.repository.GetMilestones(owner, repository); err == nil {
@@ -364,7 +389,7 @@ func (gu *giteaUsecase) repositorySummary(owner, repository, ref, bugLabel strin
 }
 
 func (gu *giteaUsecase) ownerRepositories(owner string) ([]models.Repository, error) {
-	value, err := gu.aggregates.get("repositories/"+owner, repositoriesTTL, gu.now(), func() (interface{}, error) {
+	value, err := gu.aggregates.get(cacheKey("repositories", owner), repositoriesTTL, gu.now(), func() (interface{}, error) {
 		return gu.repository.GetRepositories(owner)
 	})
 	if err != nil {
@@ -374,7 +399,7 @@ func (gu *giteaUsecase) ownerRepositories(owner string) ([]models.Repository, er
 }
 
 func (gu *giteaUsecase) repositoryMilestones(owner, repository string) ([]models.Milestone, error) {
-	value, err := gu.aggregates.get("milestones/"+owner+"/"+repository, aggregatesTTL, gu.now(), func() (interface{}, error) {
+	value, err := gu.aggregates.get(cacheKey("milestones", owner, repository), aggregatesTTL, gu.now(), func() (interface{}, error) {
 		return gu.repository.GetMilestones(owner, repository)
 	})
 	if err != nil {
@@ -394,23 +419,55 @@ func (gu *giteaUsecase) defaultBranch(owner, repository string) string {
 	return "main"
 }
 
-// ownerRuns reads the runs of an organization in one call, or of each repository for a user
+// ownerRuns reads the runs of an organization in one call, or of each repository for a user (or a Gitea without
+// the organization endpoint), cached briefly. Only a 404 switches to the per-repository reads, which is remembered.
 func (gu *giteaUsecase) ownerRuns(owner string) ([]models.Run, error) {
-	runs, err := gu.repository.GetOwnerRuns(owner)
-	if err == nil {
-		return runs, nil
+	value, err := gu.aggregates.get(cacheKey("runs", owner), runsTTL, gu.now(), func() (interface{}, error) {
+		if !gu.readsRunsPerRepository(owner) {
+			runs, err := gu.repository.GetOwnerRuns(owner)
+			if err == nil {
+				return runs, nil
+			}
+			if !models.IsNotFound(err) {
+				return nil, err
+			}
+			_, _ = gu.aggregates.get(cacheKey("perRepositoryRuns", owner), ownerKindTTL, gu.now(), func() (interface{}, error) {
+				return true, nil
+			})
+		}
+		return gu.repositoriesRuns(owner)
+	})
+	if err != nil {
+		return nil, err
 	}
+	return value.([]models.Run), nil
+}
 
+// readsRunsPerRepository tells whether the owner-wide runs endpoint answered 404 for owner lately
+func (gu *giteaUsecase) readsRunsPerRepository(owner string) bool {
+	value, _ := gu.aggregates.get(cacheKey("perRepositoryRuns", owner), ownerKindTTL, gu.now(), func() (interface{}, error) {
+		return nil, errNotCached
+	})
+	return value != nil
+}
+
+func (gu *giteaUsecase) repositoriesRuns(owner string) ([]models.Run, error) {
 	repositories, err := gu.ownerRepositories(owner)
 	if err != nil {
 		return nil, err
 	}
 
-	runs = nil
+	var runs []models.Run
+	read := 0
 	for _, repository := range repositories {
 		if repository.Archived || repository.Empty {
 			continue
 		}
+		if read == maxRunsRepositories {
+			break
+		}
+		read++
+
 		repositoryRuns, err := gu.repository.GetRuns(owner, repository.Name, "")
 		if err != nil {
 			continue
@@ -424,6 +481,22 @@ func (gu *giteaUsecase) ownerRuns(owner string) ([]models.Run, error) {
 	}
 
 	return runs, nil
+}
+
+// searchIssues returns a copy (callers sort it) of the open issues or pull requests of an owner, cached briefly
+func (gu *giteaUsecase) searchIssues(owner, kind string) ([]models.Issue, error) {
+	value, err := gu.aggregates.get(cacheKey("search", owner, kind), searchTTL, gu.now(), func() (interface{}, error) {
+		return gu.repository.SearchIssues(owner, kind)
+	})
+	if err != nil {
+		return nil, err
+	}
+	return append([]models.Issue(nil), value.([]models.Issue)...), nil
+}
+
+// cacheKey joins parts with a separator that cannot appear in Gitea names or params
+func cacheKey(parts ...string) string {
+	return strings.Join(parts, "\x00")
 }
 
 func sameWorkflow(runs []models.Run, run models.Run) []models.Run {
@@ -561,4 +634,50 @@ func humanizeDuration(d time.Duration) string {
 		return fmt.Sprintf("%dm", int(d.Minutes()))
 	}
 	return fmt.Sprintf("%dh%02d", int(d.Hours()), int(d.Minutes())%60)
+}
+
+// messageError carries the message of the error tile and the cause
+type messageError struct {
+	message string
+	err     error
+}
+
+func (e *messageError) Error() string { return e.message }
+func (e *messageError) Unwrap() error { return e.err }
+
+// organizationContributions sums the heatmaps of the members of an organization (Gitea has no organization heatmap),
+// cached for a while: days are the granularity, and a heatmap is a heavy request for Gitea.
+// Members whose heatmap cannot be read (hidden activity, disabled heatmap) are skipped; it fails only when all fail.
+func (gu *giteaUsecase) organizationContributions(organization string) ([]models.Contribution, error) {
+	value, err := gu.aggregates.get(cacheKey("contributions", organization), contributionsTTL, gu.now(), func() (interface{}, error) {
+		members, err := gu.repository.GetOrganizationMembers(organization)
+		if err != nil {
+			return nil, &messageError{message: "unable to load organization members", err: err}
+		}
+		if len(members) > maxContributionsMembers {
+			members = members[:maxContributionsMembers]
+		}
+
+		items := []models.Contribution{}
+		var lastErr error
+		loaded := 0
+		for _, member := range members {
+			memberItems, err := gu.repository.GetContributions(member)
+			if err != nil {
+				lastErr = err
+				continue
+			}
+			loaded++
+			items = append(items, memberItems...)
+		}
+		if loaded == 0 && lastErr != nil {
+			return nil, &messageError{message: "unable to load contributions", err: lastErr}
+		}
+
+		return items, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return value.([]models.Contribution), nil
 }

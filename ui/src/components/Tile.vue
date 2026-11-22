@@ -32,7 +32,9 @@
         {{ listCount }}
       </div>
 
-      <monitoror-tile-item-list v-if="isList && items.length > 0" :items="items"
+      <monitoror-tile-item-pills v-if="isPills && items.length > 0" :items="items" :tile-type="type" :theme="theme"
+                                 class="c-monitoror-tile--item-list"></monitoror-tile-item-pills>
+      <monitoror-tile-item-list v-else-if="isList && items.length > 0" :items="items"
                                 class="c-monitoror-tile--item-list"></monitoror-tile-item-list>
 
       <monitoror-sparkline v-if="hasSparkline" :values="activity"
@@ -99,6 +101,7 @@ import MonitororSubTile from '@/components/SubTile.vue'
 import MonitororTileChips from '@/components/TileChips.vue'
 import MonitororTileIcon from '@/components/TileIcon.vue'
 import MonitororTileItemList from '@/components/TileItemList.vue'
+import MonitororTileItemPills from '@/components/TileItemPills.vue'
 import TileItem from '@/types/tileItem'
 
 const LIST_TILE_TYPES: TileType[] = [
@@ -118,6 +121,7 @@ export default defineComponent({
     MonitororTileChips,
     MonitororTileIcon,
     MonitororTileItemList,
+    MonitororTileItemPills,
   },
   props: {
     config: {
@@ -253,6 +257,11 @@ export default defineComponent({
       return LIST_TILE_TYPES.includes(type.value)
     })
 
+    // Runs are shown like the sub-tiles of a GROUP tile (pills with a progress bar)
+    const isPills = computed((): boolean => {
+      return type.value === TileType.GiteaActions
+    })
+
     const isRepository = computed((): boolean => {
       return type.value === TileType.GiteaRepository
     })
@@ -349,7 +358,9 @@ export default defineComponent({
 
       // team board
       isList,
+      isPills,
       isRepository,
+      theme,
       items,
       listCount,
       activity,

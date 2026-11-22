@@ -1,10 +1,12 @@
 <template>
-  <ul class="c-monitoror-tile-item-list">
+  <div ref="outer" class="c-monitoror-tile-item-list">
+  <ul ref="inner" class="c-monitoror-tile-item-list--items">
     <li v-for="(item, index) in items" :key="index" class="c-monitoror-tile-item-list--item">
       <div class="c-monitoror-tile-item-list--row">
         <span v-if="item.status" class="c-monitoror-tile-item-list--status"
               :class="'c-monitoror-tile-item-list--status__' + statusClass(item.status)"></span>
         <span class="c-monitoror-tile-item-list--label">{{ item.label }}</span>
+        <span class="c-monitoror-tile-item-list--break"></span>
         <span v-if="item.tag" class="c-monitoror-tile-item-list--tag"
               :class="{'c-monitoror-tile-item-list--tag__bug': isBug(item.tag)}">{{ item.tag }}</span>
         <span v-if="item.detail" class="c-monitoror-tile-item-list--detail">{{ item.detail }}</span>
@@ -15,15 +17,18 @@
       </div>
     </li>
   </ul>
+  </div>
 </template>
 
 <script lang="ts">
-import {defineComponent} from 'vue'
+import {defineComponent, ref} from 'vue'
 
 import TileItem from '@/types/tileItem'
 import {statusClass, isBug} from '@/helpers/tileItem'
+import useFitScale from '@/composables/useFitScale'
 
-// One item per line, in a box with hidden overflow: items that do not fit are simply cut.
+// One item per line, in a box with hidden overflow: texts grow to use the free space of the box,
+// shrink a little when it is full, and items that still do not fit are cut.
 export default defineComponent({
   name: 'MonitororTileItemList',
   props: {
@@ -32,12 +37,20 @@ export default defineComponent({
       required: true,
     },
   },
-  setup() {
+  setup(props) {
+    const outer = ref<HTMLElement>()
+    const inner = ref<HTMLElement>()
+    // Second layout: the details on a line of their own, so that bigger texts fit when there is room in height
+    useFitScale(outer, inner, '.c-monitoror-tile-item-list--label', () => props.items,
+      ['', 'c-monitoror-tile-item-list__stacked'])
+
     const progressWidth = (progress: number): string => {
       return Math.min(100, Math.max(0, progress)) + '%'
     }
 
     return {
+      outer,
+      inner,
       statusClass,
       isBug,
       progressWidth,
@@ -48,10 +61,13 @@ export default defineComponent({
 
 <style lang="scss">
   .c-monitoror-tile-item-list {
+    overflow: hidden;
+  }
+
+  .c-monitoror-tile-item-list--items {
     margin: 0;
     padding: 0;
     list-style: none;
-    overflow: hidden;
     font-size: 20px;
     line-height: 1.25;
   }
@@ -65,6 +81,33 @@ export default defineComponent({
     align-items: center;
     gap: 8px;
     min-width: 0;
+  }
+
+  .c-monitoror-tile-item-list--break {
+    display: none;
+  }
+
+  .c-monitoror-tile-item-list__stacked {
+    .c-monitoror-tile-item-list--item {
+      padding: 4px 0;
+    }
+
+    .c-monitoror-tile-item-list--row {
+      flex-wrap: wrap;
+      row-gap: 0;
+    }
+
+    .c-monitoror-tile-item-list--break {
+      display: block;
+      flex-basis: 100%;
+      height: 0;
+    }
+
+    .c-monitoror-tile-item-list--detail {
+      flex: 1 1 0;
+      max-width: none;
+      text-align: left;
+    }
   }
 
   .c-monitoror-tile-item-list--label {

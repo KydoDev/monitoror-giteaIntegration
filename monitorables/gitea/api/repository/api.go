@@ -459,7 +459,7 @@ func (r *giteaRepository) get(path string, query url.Values, result interface{})
 	}
 
 	if response.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("gitea returned status %d: %s", response.StatusCode, truncate(strings.TrimSpace(string(data))))
+		return nil, &models.StatusError{StatusCode: response.StatusCode, Body: truncate(strings.TrimSpace(string(data)))}
 	}
 
 	if result != nil {

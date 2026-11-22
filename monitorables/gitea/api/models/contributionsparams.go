@@ -27,5 +27,5 @@ func (p *ContributionsParams) Validate() []validator.Error {
 	if (p.User == "") == (p.Organization == "") {
 		return []validator.Error{validator.NewDefaultError("User", "set, or organization set (not both)")}
 	}
-	return nil
+	return validateNames(map[string]string{"User": p.User, "Organization": p.Organization})
 }

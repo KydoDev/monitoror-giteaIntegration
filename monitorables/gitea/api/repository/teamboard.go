@@ -171,13 +171,17 @@ func (r *giteaRepository) GetCommits(owner, repository, ref string, since time.T
 }
 
 // GetFeedCommits returns the commits pushed to the repositories of an owner, newest push first.
-// The organization feed is used, or the user feed when the owner is a user.
+// The organization feed is used, or the user feed when the owner is not an organization (404).
 func (r *giteaRepository) GetFeedCommits(owner string, limit int) ([]models.FeedCommit, error) {
 	query := url.Values{}
 	query.Set("limit", strconv.Itoa(PageSize))
 
 	var activities []feedActivity
 	if _, err := r.get(fmt.Sprintf("/orgs/%s/activities/feeds", url.PathEscape(owner)), query, &activities); err != nil {
+		// Only an unknown organization means a user: other errors (timeout, 5xx) are reported as they are
+		if !models.IsNotFound(err) {
+			return nil, err
+		}
 		if _, err = r.get(fmt.Sprintf("/users/%s/activities/feeds", url.PathEscape(owner)), query, &activities); err != nil {
 			return nil, err
 		}
