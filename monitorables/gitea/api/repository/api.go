@@ -34,6 +34,10 @@ type (
 		CreatedAt   time.Time `json:"created_at"`
 		StartedAt   time.Time `json:"started_at"`
 		CompletedAt time.Time `json:"completed_at"`
+		Title       string    `json:"display_title"`
+		Repository  *struct {
+			Name string `json:"name"`
+		} `json:"repository"`
 	}
 
 	workflowRuns struct {
@@ -217,7 +221,9 @@ func (r *giteaRepository) GetChecks(owner, repository, ref string) (*models.Chec
 // It fails on Gitea versions without this endpoint and when Actions are disabled.
 func (r *giteaRepository) GetRuns(owner, repository, branch string) ([]models.Run, error) {
 	query := url.Values{}
-	query.Set("branch", branch)
+	if branch != "" {
+		query.Set("branch", branch)
+	}
 	query.Set("limit", strconv.Itoa(PageSize))
 
 	var result workflowRuns
@@ -226,28 +232,37 @@ func (r *giteaRepository) GetRuns(owner, repository, branch string) ([]models.Ru
 		return nil, err
 	}
 
-	runs := make([]models.Run, 0, len(result.WorkflowRuns))
-	for _, run := range result.WorkflowRuns {
+	return toRuns(result.WorkflowRuns), nil
+}
+
+func toRuns(workflowRuns []workflowRun) []models.Run {
+	runs := make([]models.Run, 0, len(workflowRuns))
+	for _, run := range workflowRuns {
 		workflow := run.Path
 		if i := strings.LastIndex(workflow, "@"); i >= 0 {
 			workflow = workflow[:i]
 		}
 
-		runs = append(runs, models.Run{
+		result := models.Run{
 			ID:          run.ID,
 			Attempt:     run.RunAttempt,
 			Number:      run.RunNumber,
 			Workflow:    workflow,
+			Title:       run.Title,
 			HeadSHA:     run.HeadSHA,
 			Status:      run.Status,
 			Conclusion:  run.Conclusion,
 			CreatedAt:   run.CreatedAt,
 			StartedAt:   validTime(run.StartedAt),
 			CompletedAt: validTime(run.CompletedAt),
-		})
+		}
+		if run.Repository != nil {
+			result.Repository = run.Repository.Name
+		}
+		runs = append(runs, result)
 	}
 
-	return runs, nil
+	return runs
 }
 
 func (r *giteaRepository) GetPullRequest(owner, repository string, id int) (*models.PullRequest, error) {

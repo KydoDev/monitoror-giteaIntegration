@@ -16,6 +16,36 @@ type Usecase struct {
 	mock.Mock
 }
 
+// Actions provides a mock function with given fields: params
+func (_m *Usecase) Actions(params *models.ListParams) (*monitorormodels.Tile, error) {
+	ret := _m.Called(params)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Actions")
+	}
+
+	var r0 *monitorormodels.Tile
+	var r1 error
+	if rf, ok := ret.Get(0).(func(*models.ListParams) (*monitorormodels.Tile, error)); ok {
+		return rf(params)
+	}
+	if rf, ok := ret.Get(0).(func(*models.ListParams) *monitorormodels.Tile); ok {
+		r0 = rf(params)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*monitorormodels.Tile)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(*models.ListParams) error); ok {
+		r1 = rf(params)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // Checks provides a mock function with given fields: params
 func (_m *Usecase) Checks(params *models.ChecksParams) (*monitorormodels.Tile, error) {
 	ret := _m.Called(params)
@@ -68,6 +98,36 @@ func (_m *Usecase) ChecksGenerator(params interface{}) ([]configmodels.Generated
 	}
 
 	if rf, ok := ret.Get(1).(func(interface{}) error); ok {
+		r1 = rf(params)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// Commits provides a mock function with given fields: params
+func (_m *Usecase) Commits(params *models.ListParams) (*monitorormodels.Tile, error) {
+	ret := _m.Called(params)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Commits")
+	}
+
+	var r0 *monitorormodels.Tile
+	var r1 error
+	if rf, ok := ret.Get(0).(func(*models.ListParams) (*monitorormodels.Tile, error)); ok {
+		return rf(params)
+	}
+	if rf, ok := ret.Get(0).(func(*models.ListParams) *monitorormodels.Tile); ok {
+		r0 = rf(params)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*monitorormodels.Tile)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(*models.ListParams) error); ok {
 		r1 = rf(params)
 	} else {
 		r1 = ret.Error(1)
@@ -136,6 +196,36 @@ func (_m *Usecase) Count(params *models.CountParams) (*monitorormodels.Tile, err
 	return r0, r1
 }
 
+// Issues provides a mock function with given fields: params
+func (_m *Usecase) Issues(params *models.IssuesListParams) (*monitorormodels.Tile, error) {
+	ret := _m.Called(params)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Issues")
+	}
+
+	var r0 *monitorormodels.Tile
+	var r1 error
+	if rf, ok := ret.Get(0).(func(*models.IssuesListParams) (*monitorormodels.Tile, error)); ok {
+		return rf(params)
+	}
+	if rf, ok := ret.Get(0).(func(*models.IssuesListParams) *monitorormodels.Tile); ok {
+		r0 = rf(params)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*monitorormodels.Tile)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(*models.IssuesListParams) error); ok {
+		r1 = rf(params)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // Milestone provides a mock function with given fields: params
 func (_m *Usecase) Milestone(params *models.MilestoneParams) (*monitorormodels.Tile, error) {
 	ret := _m.Called(params)
@@ -158,6 +248,36 @@ func (_m *Usecase) Milestone(params *models.MilestoneParams) (*monitorormodels.T
 	}
 
 	if rf, ok := ret.Get(1).(func(*models.MilestoneParams) error); ok {
+		r1 = rf(params)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// Milestones provides a mock function with given fields: params
+func (_m *Usecase) Milestones(params *models.ListParams) (*monitorormodels.Tile, error) {
+	ret := _m.Called(params)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Milestones")
+	}
+
+	var r0 *monitorormodels.Tile
+	var r1 error
+	if rf, ok := ret.Get(0).(func(*models.ListParams) (*monitorormodels.Tile, error)); ok {
+		return rf(params)
+	}
+	if rf, ok := ret.Get(0).(func(*models.ListParams) *monitorormodels.Tile); ok {
+		r0 = rf(params)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*monitorormodels.Tile)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(*models.ListParams) error); ok {
 		r1 = rf(params)
 	} else {
 		r1 = ret.Error(1)
@@ -226,6 +346,36 @@ func (_m *Usecase) PullRequest(params *models.PullRequestParams) (*monitorormode
 	return r0, r1
 }
 
+// PullRequests provides a mock function with given fields: params
+func (_m *Usecase) PullRequests(params *models.ListParams) (*monitorormodels.Tile, error) {
+	ret := _m.Called(params)
+
+	if len(ret) == 0 {
+		panic("no return value specified for PullRequests")
+	}
+
+	var r0 *monitorormodels.Tile
+	var r1 error
+	if rf, ok := ret.Get(0).(func(*models.ListParams) (*monitorormodels.Tile, error)); ok {
+		return rf(params)
+	}
+	if rf, ok := ret.Get(0).(func(*models.ListParams) *monitorormodels.Tile); ok {
+		r0 = rf(params)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*monitorormodels.Tile)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(*models.ListParams) error); ok {
+		r1 = rf(params)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // PullRequestsGenerator provides a mock function with given fields: params
 func (_m *Usecase) PullRequestsGenerator(params interface{}) ([]configmodels.GeneratedTile, error) {
 	ret := _m.Called(params)
@@ -248,6 +398,66 @@ func (_m *Usecase) PullRequestsGenerator(params interface{}) ([]configmodels.Gen
 	}
 
 	if rf, ok := ret.Get(1).(func(interface{}) error); ok {
+		r1 = rf(params)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// RepositoriesGenerator provides a mock function with given fields: params
+func (_m *Usecase) RepositoriesGenerator(params interface{}) ([]configmodels.GeneratedTile, error) {
+	ret := _m.Called(params)
+
+	if len(ret) == 0 {
+		panic("no return value specified for RepositoriesGenerator")
+	}
+
+	var r0 []configmodels.GeneratedTile
+	var r1 error
+	if rf, ok := ret.Get(0).(func(interface{}) ([]configmodels.GeneratedTile, error)); ok {
+		return rf(params)
+	}
+	if rf, ok := ret.Get(0).(func(interface{}) []configmodels.GeneratedTile); ok {
+		r0 = rf(params)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]configmodels.GeneratedTile)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(interface{}) error); ok {
+		r1 = rf(params)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// Repository provides a mock function with given fields: params
+func (_m *Usecase) Repository(params *models.RepositoryParams) (*monitorormodels.Tile, error) {
+	ret := _m.Called(params)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Repository")
+	}
+
+	var r0 *monitorormodels.Tile
+	var r1 error
+	if rf, ok := ret.Get(0).(func(*models.RepositoryParams) (*monitorormodels.Tile, error)); ok {
+		return rf(params)
+	}
+	if rf, ok := ret.Get(0).(func(*models.RepositoryParams) *monitorormodels.Tile); ok {
+		r0 = rf(params)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*monitorormodels.Tile)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(*models.RepositoryParams) error); ok {
 		r1 = rf(params)
 	} else {
 		r1 = ret.Error(1)

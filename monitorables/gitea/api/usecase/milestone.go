@@ -100,20 +100,22 @@ func nextMilestone(milestones []models.Milestone) *models.Milestone {
 
 	sorted := make([]models.Milestone, len(milestones))
 	copy(sorted, milestones)
-	sort.Slice(sorted, func(i, j int) bool {
-		a, b := sorted[i].DueOn, sorted[j].DueOn
-		switch {
-		case a != nil && b != nil && !a.Equal(*b):
-			return a.Before(*b)
-		case a != nil && b == nil:
-			return true
-		case a == nil && b != nil:
-			return false
-		}
-		return sorted[i].ID < sorted[j].ID
-	})
+	sort.Slice(sorted, func(i, j int) bool { return milestoneBefore(sorted[i], sorted[j]) })
 
 	return &sorted[0]
+}
+
+// milestoneBefore orders milestones by due date; milestones without due date come last, oldest first
+func milestoneBefore(a, b models.Milestone) bool {
+	switch {
+	case a.DueOn != nil && b.DueOn != nil && !a.DueOn.Equal(*b.DueOn):
+		return a.DueOn.Before(*b.DueOn)
+	case a.DueOn != nil && b.DueOn == nil:
+		return true
+	case a.DueOn == nil && b.DueOn != nil:
+		return false
+	}
+	return a.ID < b.ID
 }
 
 // daysUntil counts calendar days from now to due, in the location of now (TZ)

@@ -173,7 +173,7 @@ func (gu *giteaUsecase) Contributions(params *models.ContributionsParams) (*core
 	tile := coreModels.NewTile(api.GiteaContributionsTileType).WithMetrics(coreModels.NumberUnit)
 	tile.Label = params.User
 	tile.Status = coreModels.SuccessStatus
-	tile.Metrics.Values = faker.Contributions(params.User, params.Weeks)
+	tile.Metrics.Values = faker.Contributions(params.User+params.Organization, params.Weeks)
 
 	return tile, nil
 }
@@ -218,4 +218,55 @@ func (gu *giteaUsecase) computeDuration(projectID string, duration time.Duration
 	}
 
 	return faker.ComputeDuration(value.(time.Time), duration)
+}
+
+func fakeListTile(tileType coreModels.TileType, label string, items ...coreModels.TileItem) *coreModels.Tile {
+	tile := coreModels.NewTile(tileType).WithMetrics(coreModels.NumberUnit)
+	tile.Label = label
+	tile.Status = coreModels.SuccessStatus
+	tile.Metrics.Values = []string{fmt.Sprint(len(items))}
+	tile.Items = items
+	return tile
+}
+
+func (gu *giteaUsecase) PullRequests(params *models.ListParams) (*coreModels.Tile, error) {
+	return fakeListTile(api.GiteaPullRequestsTileType, "Pull requests",
+		coreModels.TileItem{Label: "#41 Add login form", Detail: "api · 5d"},
+		coreModels.TileItem{Label: "#39 Faster search", Detail: "web · 3d"}), nil
+}
+
+func (gu *giteaUsecase) Issues(params *models.IssuesListParams) (*coreModels.Tile, error) {
+	return fakeListTile(api.GiteaIssuesTileType, "Issues",
+		coreModels.TileItem{Label: "#88 Crash on login", Detail: "mobile · 4d", Tag: "bug"},
+		coreModels.TileItem{Label: "#90 Dark mode", Detail: "web · 2d"}), nil
+}
+
+func (gu *giteaUsecase) Actions(params *models.ListParams) (*coreModels.Tile, error) {
+	return fakeListTile(api.GiteaActionsTileType, "Actions",
+		coreModels.TileItem{Label: "api · build", Detail: "3m / 5m", Status: coreModels.RunningStatus, Progress: pointer.ToInt(60)},
+		coreModels.TileItem{Label: "web · test", Detail: "2h", Status: coreModels.FailedStatus}), nil
+}
+
+func (gu *giteaUsecase) Milestones(params *models.ListParams) (*coreModels.Tile, error) {
+	return fakeListTile(api.GiteaMilestonesTileType, "Milestones",
+		coreModels.TileItem{Label: "api · v2.0", Detail: "due in 5 days · 60%", Status: coreModels.SuccessStatus}), nil
+}
+
+func (gu *giteaUsecase) Commits(params *models.ListParams) (*coreModels.Tile, error) {
+	return fakeListTile(api.GiteaCommitsTileType, "Latest commits",
+		coreModels.TileItem{Label: "feat: add login form", Detail: "api · alice · 2h"}), nil
+}
+
+func (gu *giteaUsecase) Repository(params *models.RepositoryParams) (*coreModels.Tile, error) {
+	tile := coreModels.NewTile(api.GiteaRepositoryTileType).WithMetrics(coreModels.NumberUnit)
+	tile.Label = params.Repository
+	tile.Status = coreModels.SuccessStatus
+	tile.Metrics.Values = []string{"3", "5", "2", "8", "6", "9", "4", "7", "10", "6", "8", "5"}
+	tile.Items = []coreModels.TileItem{{Label: "PR", Detail: "3"}, {Label: "Issues", Detail: "5"}, {Label: "Bugs", Detail: "1", Tag: "bug"}}
+	tile.Message = "v2.0 · due in 5 days · 60%"
+	return tile, nil
+}
+
+func (gu *giteaUsecase) RepositoriesGenerator(params interface{}) ([]uiConfigModels.GeneratedTile, error) {
+	panic("unimplemented")
 }

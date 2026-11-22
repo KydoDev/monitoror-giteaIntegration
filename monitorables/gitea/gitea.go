@@ -30,6 +30,15 @@ type Monitorable struct {
 	checksGeneratorEnabler      registry.GeneratorEnabler
 	milestoneTileEnabler        registry.TileEnabler
 	milestoneGeneratorEnabler   registry.GeneratorEnabler
+
+	// Team board
+	pullRequestsTileEnabler    registry.TileEnabler
+	issuesTileEnabler          registry.TileEnabler
+	actionsTileEnabler         registry.TileEnabler
+	milestonesTileEnabler      registry.TileEnabler
+	commitsTileEnabler         registry.TileEnabler
+	repositoryTileEnabler      registry.TileEnabler
+	repositoryGeneratorEnabler registry.GeneratorEnabler
 }
 
 func NewMonitorable(store *store.Store) *Monitorable {
@@ -49,6 +58,13 @@ func NewMonitorable(store *store.Store) *Monitorable {
 	m.checksGeneratorEnabler = store.Registry.RegisterGenerator(api.GiteaChecksTileType, versions.Version2001, m.GetVariantsNames())
 	m.milestoneTileEnabler = store.Registry.RegisterTile(api.GiteaMilestoneTileType, versions.Version2001, m.GetVariantsNames())
 	m.milestoneGeneratorEnabler = store.Registry.RegisterGenerator(api.GiteaMilestoneTileType, versions.Version2001, m.GetVariantsNames())
+	m.pullRequestsTileEnabler = store.Registry.RegisterTile(api.GiteaPullRequestsTileType, versions.Version2001, m.GetVariantsNames())
+	m.issuesTileEnabler = store.Registry.RegisterTile(api.GiteaIssuesTileType, versions.Version2001, m.GetVariantsNames())
+	m.actionsTileEnabler = store.Registry.RegisterTile(api.GiteaActionsTileType, versions.Version2001, m.GetVariantsNames())
+	m.milestonesTileEnabler = store.Registry.RegisterTile(api.GiteaMilestonesTileType, versions.Version2001, m.GetVariantsNames())
+	m.commitsTileEnabler = store.Registry.RegisterTile(api.GiteaCommitsTileType, versions.Version2001, m.GetVariantsNames())
+	m.repositoryTileEnabler = store.Registry.RegisterTile(api.GiteaRepositoryTileType, versions.Version2001, m.GetVariantsNames())
+	m.repositoryGeneratorEnabler = store.Registry.RegisterGenerator(api.GiteaRepositoryTileType, versions.Version2001, m.GetVariantsNames())
 
 	return m
 }
@@ -91,6 +107,12 @@ func (m *Monitorable) Enable(variantName coreModels.VariantName) {
 	routePullRequest := routeGroup.GET("/pullrequest", delivery.GetPullRequest)
 	routeContributions := routeGroup.GET("/contributions", delivery.GetContributions)
 	routeMilestone := routeGroup.GET("/milestone", delivery.GetMilestone)
+	routePullRequests := routeGroup.GET("/pullrequests", delivery.GetPullRequests)
+	routeIssues := routeGroup.GET("/issues", delivery.GetIssues)
+	routeActions := routeGroup.GET("/actions", delivery.GetActions)
+	routeMilestones := routeGroup.GET("/milestones", delivery.GetMilestones)
+	routeCommits := routeGroup.GET("/commits", delivery.GetCommits)
+	routeRepository := routeGroup.GET("/repository", delivery.GetRepository)
 
 	// EnableTile data for config hydration
 	m.countTileEnabler.Enable(variantName, &giteaModels.CountParams{}, routeCount.Path)
@@ -101,4 +123,11 @@ func (m *Monitorable) Enable(variantName coreModels.VariantName) {
 	m.checksGeneratorEnabler.Enable(variantName, &giteaModels.ChecksGeneratorParams{}, usecase.ChecksGenerator)
 	m.milestoneTileEnabler.Enable(variantName, &giteaModels.MilestoneParams{}, routeMilestone.Path)
 	m.milestoneGeneratorEnabler.Enable(variantName, &giteaModels.MilestoneGeneratorParams{}, usecase.MilestonesGenerator)
+	m.pullRequestsTileEnabler.Enable(variantName, &giteaModels.ListParams{}, routePullRequests.Path)
+	m.issuesTileEnabler.Enable(variantName, &giteaModels.IssuesListParams{}, routeIssues.Path)
+	m.actionsTileEnabler.Enable(variantName, &giteaModels.ListParams{}, routeActions.Path)
+	m.milestonesTileEnabler.Enable(variantName, &giteaModels.ListParams{}, routeMilestones.Path)
+	m.commitsTileEnabler.Enable(variantName, &giteaModels.ListParams{}, routeCommits.Path)
+	m.repositoryTileEnabler.Enable(variantName, &giteaModels.RepositoryParams{}, routeRepository.Path)
+	m.repositoryGeneratorEnabler.Enable(variantName, &giteaModels.RepositoryGeneratorParams{}, usecase.RepositoriesGenerator)
 }

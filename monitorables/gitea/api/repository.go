@@ -2,7 +2,11 @@
 
 package api
 
-import "github.com/monitoror/monitoror/monitorables/gitea/api/models"
+import (
+	"time"
+
+	"github.com/monitoror/monitoror/monitorables/gitea/api/models"
+)
 
 type (
 	Repository interface {
@@ -16,5 +20,13 @@ type (
 		GetContributions(user string) ([]models.Contribution, error)
 		GetRepositories(owner string) ([]models.Repository, error)
 		GetMilestones(owner, repository string) ([]models.Milestone, error)
+
+		// Team board
+		SearchIssues(owner, kind string) ([]models.Issue, error)
+		GetRepositoryIssues(owner, repository string) ([]models.Issue, error)
+		GetOwnerRuns(owner string) ([]models.Run, error)
+		GetCommits(owner, repository, ref string, since time.Time) ([]models.RepositoryCommit, error)
+		GetFeedCommits(owner string, limit int) ([]models.FeedCommit, error)
+		GetOrganizationMembers(organization string) ([]string, error)
 	}
 )

@@ -15,6 +15,16 @@ type (
 
 		Metrics *TileMetrics `json:"metrics,omitempty"`
 		Build   *TileBuild   `json:"build,omitempty"`
+		Items   []TileItem   `json:"items,omitempty"`
+	}
+
+	// TileItem is a line of a list tile (pull requests, issues, runs ...) or a chip of a summary tile
+	TileItem struct {
+		Label    string     `json:"label"`
+		Detail   string     `json:"detail,omitempty"`
+		Status   TileStatus `json:"status,omitempty"`
+		Tag      string     `json:"tag,omitempty"`
+		Progress *int       `json:"progress,omitempty"` // percentage of the estimated duration, for running items
 	}
 
 	TileType   string //PING, PORT, ... (defined in usecase.go for each monitorable)
