@@ -9,6 +9,8 @@ type TileConfig = {
   rowSpan?: number,
   url?: string,
   tiles?: TileConfig[],
+  showAll?: boolean,
+  maxTiles?: number,
   initialMaxDelay?: number,
 }
 

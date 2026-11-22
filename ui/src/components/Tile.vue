@@ -46,6 +46,12 @@
       <div class="c-monitoror-tile--sub-tiles" v-if="isGroup">
         <monitoror-sub-tile v-for="subTile in displayedSubTiles" :key="subTile.stateKey"
                             :config="subTile"></monitoror-sub-tile>
+        <div class="c-monitoror-sub-tile c-monitoror-sub-tile__more" :class="'c-monitoror-sub-tile__theme-' + theme"
+             v-if="hiddenSubTilesCount > 0">
+          <div class="c-monitoror-sub-tile--content">
+            <div class="c-monitoror-sub-tile--label">+{{ hiddenSubTilesCount }}</div>
+          </div>
+        </div>
       </div>
 
       <template v-if="hasContributionsGraph">
@@ -90,6 +96,7 @@ import {defineComponent, computed} from 'vue'
 import {useStore} from 'vuex'
 
 import DISPLAYABLE_SUBTILE_STATUS from '@/constants/displayableSubtileStatus'
+import DEFAULT_GROUP_MAX_TILES from '@/constants/defaultGroupMaxTiles'
 import useTileCommons from '@/composables/useTileCommons'
 import TileStatus from '@/enums/tileStatus'
 import TileType from '@/enums/tileType'
@@ -208,20 +215,41 @@ export default defineComponent({
       return props.config.rowSpan || 1
     })
 
-    const displayedSubTiles = computed((): TileConfig[] | undefined => {
+    // Sub-tiles to show: the ones with a problem, or all of them with "showAll". Beyond "maxTiles" the problems are
+    // kept first and the rest is counted in a "+N" pill, which takes the last place.
+    const groupSubTiles = computed((): {shown: TileConfig[], hidden: number} => {
       if (!props.config.tiles) {
-        return
+        return {shown: [], hidden: 0}
       }
 
-      const displayedSubTiles = props.config.tiles.filter((subTile) => {
-        if (!Object.keys(store.state.tilesState).includes(subTile.stateKey)) {
-          return false
-        }
-
-        return DISPLAYABLE_SUBTILE_STATUS.includes(store.state.tilesState[subTile.stateKey].status)
+      const loaded = props.config.tiles.filter((subTile) => {
+        return Object.keys(store.state.tilesState).includes(subTile.stateKey)
       })
+      const hasProblem = (subTile: TileConfig) => {
+        return DISPLAYABLE_SUBTILE_STATUS.includes(store.state.tilesState[subTile.stateKey].status)
+      }
+      const candidates = props.config.showAll ? loaded : loaded.filter(hasProblem)
 
-      return displayedSubTiles
+      const maxTiles = props.config.maxTiles ?? (props.config.showAll ? DEFAULT_GROUP_MAX_TILES : undefined)
+      if (maxTiles === undefined || candidates.length <= maxTiles) {
+        return {shown: candidates, hidden: 0}
+      }
+
+      // Keep the configured order on the board, choosing the problems first
+      const chosen = [...candidates.filter(hasProblem), ...candidates.filter((subTile) => !hasProblem(subTile))]
+        .slice(0, maxTiles - 1)
+      return {
+        shown: candidates.filter((subTile) => chosen.includes(subTile)),
+        hidden: candidates.length - chosen.length,
+      }
+    })
+
+    const displayedSubTiles = computed((): TileConfig[] => {
+      return groupSubTiles.value.shown
+    })
+
+    const hiddenSubTilesCount = computed((): number => {
+      return groupSubTiles.value.hidden
     })
 
     const message = computed((): string | undefined => {
@@ -333,6 +361,7 @@ export default defineComponent({
       label,
       message,
       displayedSubTiles,
+      hiddenSubTilesCount,
 
       // build
       build,
@@ -698,5 +727,10 @@ export default defineComponent({
     position: relative;
     margin-top: 10px;
     z-index: 1;
+  }
+
+  .c-monitoror-sub-tile__more .c-monitoror-sub-tile--content {
+    padding-left: 15px;
+    opacity: 0.8;
   }
 </style>
