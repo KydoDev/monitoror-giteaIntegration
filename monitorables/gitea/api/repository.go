@@ -15,5 +15,6 @@ type (
 		GetCommit(owner, repository, sha string) (*models.Commit, error)
 		GetContributions(user string) ([]models.Contribution, error)
 		GetRepositories(owner string) ([]models.Repository, error)
+		GetMilestones(owner, repository string) ([]models.Milestone, error)
 	}
 )

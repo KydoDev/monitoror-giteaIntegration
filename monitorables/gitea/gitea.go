@@ -28,6 +28,8 @@ type Monitorable struct {
 	contributionsTileEnabler    registry.TileEnabler
 	pullRequestGeneratorEnabler registry.GeneratorEnabler
 	checksGeneratorEnabler      registry.GeneratorEnabler
+	milestoneTileEnabler        registry.TileEnabler
+	milestoneGeneratorEnabler   registry.GeneratorEnabler
 }
 
 func NewMonitorable(store *store.Store) *Monitorable {
@@ -45,6 +47,8 @@ func NewMonitorable(store *store.Store) *Monitorable {
 	m.contributionsTileEnabler = store.Registry.RegisterTile(api.GiteaContributionsTileType, versions.Version2001, m.GetVariantsNames())
 	m.pullRequestGeneratorEnabler = store.Registry.RegisterGenerator(api.GiteaPullRequestTileType, versions.Version2001, m.GetVariantsNames())
 	m.checksGeneratorEnabler = store.Registry.RegisterGenerator(api.GiteaChecksTileType, versions.Version2001, m.GetVariantsNames())
+	m.milestoneTileEnabler = store.Registry.RegisterTile(api.GiteaMilestoneTileType, versions.Version2001, m.GetVariantsNames())
+	m.milestoneGeneratorEnabler = store.Registry.RegisterGenerator(api.GiteaMilestoneTileType, versions.Version2001, m.GetVariantsNames())
 
 	return m
 }
@@ -86,6 +90,7 @@ func (m *Monitorable) Enable(variantName coreModels.VariantName) {
 	routeChecks := routeGroup.GET("/checks", delivery.GetChecks)
 	routePullRequest := routeGroup.GET("/pullrequest", delivery.GetPullRequest)
 	routeContributions := routeGroup.GET("/contributions", delivery.GetContributions)
+	routeMilestone := routeGroup.GET("/milestone", delivery.GetMilestone)
 
 	// EnableTile data for config hydration
 	m.countTileEnabler.Enable(variantName, &giteaModels.CountParams{}, routeCount.Path)
@@ -94,4 +99,6 @@ func (m *Monitorable) Enable(variantName coreModels.VariantName) {
 	m.contributionsTileEnabler.Enable(variantName, &giteaModels.ContributionsParams{}, routeContributions.Path)
 	m.pullRequestGeneratorEnabler.Enable(variantName, &giteaModels.PullRequestGeneratorParams{}, usecase.PullRequestsGenerator)
 	m.checksGeneratorEnabler.Enable(variantName, &giteaModels.ChecksGeneratorParams{}, usecase.ChecksGenerator)
+	m.milestoneTileEnabler.Enable(variantName, &giteaModels.MilestoneParams{}, routeMilestone.Path)
+	m.milestoneGeneratorEnabler.Enable(variantName, &giteaModels.MilestoneGeneratorParams{}, usecase.MilestonesGenerator)
 }

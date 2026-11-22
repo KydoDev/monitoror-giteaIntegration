@@ -186,6 +186,20 @@ func (gu *giteaUsecase) PullRequestsGenerator(params interface{}) ([]uiConfigMod
 	panic("unimplemented")
 }
 
+func (gu *giteaUsecase) Milestone(params *models.MilestoneParams) (*coreModels.Tile, error) {
+	tile := coreModels.NewTile(api.GiteaMilestoneTileType).WithMetrics(coreModels.RawUnit)
+	tile.Label = params.Repository
+	tile.Status = coreModels.SuccessStatus
+	tile.Message = "v2.0 · due in 5 days"
+	tile.Metrics.Values = []string{"60%"}
+
+	return tile, nil
+}
+
+func (gu *giteaUsecase) MilestonesGenerator(params interface{}) ([]uiConfigModels.GeneratedTile, error) {
+	panic("unimplemented")
+}
+
 func (gu *giteaUsecase) computeStatus(projectID string) coreModels.TileStatus {
 	value, ok := gu.timeRefByProject.Get(projectID)
 	if !ok || value == nil {

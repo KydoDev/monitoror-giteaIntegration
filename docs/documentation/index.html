@@ -96,6 +96,8 @@
               <li><a href="#tile-generate-gitea-pullrequest"><span class="tag-generate">GENERATE:</span>GITEA-PULLREQUEST</a></li>
               <li><a href="#tile-gitea-contributions">GITEA-CONTRIBUTIONS</a></li>
               <li><a href="#tile-generate-gitea-checks"><span class="tag-generate">GENERATE:</span>GITEA-CHECKS</a></li>
+              <li><a href="#tile-gitea-milestone">GITEA-MILESTONE</a></li>
+              <li><a href="#tile-generate-gitea-milestone"><span class="tag-generate">GENERATE:</span>GITEA-MILESTONE</a></li>
             </ul>
           </li>
           <li>
@@ -1306,6 +1308,80 @@ MO_MONITORABLE_GITEA_SSLVERIFY=true
         <pre class="example"><code class="language-json">
 {
   "type": "GENERATE:GITEA-CHECKS",
+  "params": {
+    "owner": "gitea"
+  }
+}
+        </code></pre>
+      </div>
+
+      <h4 id="tile-gitea-milestone">GITEA-MILESTONE</h4>
+
+      <p>
+        Show the next open milestone of a repository: its title, its due date ("due in 6 days", "2 days overdue") and its
+        progress, the share of closed issues. The milestone due first is shown; milestones without due date come last.
+        The tile turns to warning when the due date is 3 days away or less with open issues, and to failure when it is
+        overdue with open issues.
+      </p>
+
+      <p class="note">
+        <span class="tag">Note</span>
+        Due dates are computed in the timezone of Monitoror Core (<code>TZ</code> environment variable).
+        Requires UI configuration <code>"version": "2.1"</code> or higher.
+      </p>
+
+      <h5 class="m-documentation--configuration-side-title">UI configuration</h5>
+
+      <dl>
+        <dt><code>owner</code> <code class="type">string</code> <span class="required">required</span></dt>
+        <dd>
+          Gitea organization or user (from URL)
+        </dd>
+        <dt><code>repository</code> <code class="type">string</code> <span class="required">required</span></dt>
+        <dd>
+          Gitea repository name (from URL)
+        </dd>
+      </dl>
+
+      <div class="m-documentation--example">
+        <pre class="example"><code class="language-json">
+{
+  "type": "GITEA-MILESTONE",
+  "params": {
+    "owner": "gitea",
+    "repository": "tea"
+  }
+}
+        </code></pre>
+      </div>
+
+      <h4 id="tile-generate-gitea-milestone">GENERATE:<wbr>GITEA-MILESTONE</h4>
+
+      <p>
+        Show the next milestone of each repository of a Gitea organization or user that has an open milestone.
+      </p>
+
+      <p class="note">
+        <span class="tag">Note</span>
+        This tile is a generator tile that will be replaced by N classic
+        <code><a href="#tile-gitea-milestone">GITEA-MILESTONE</a></code> tiles, labelled with the repository name. <br>
+        N being the number of repositories with at least one open milestone, archived repositories excluded.
+        Requires UI configuration <code>"version": "2.1"</code> or higher.
+      </p>
+
+      <h5 class="m-documentation--configuration-side-title">UI configuration</h5>
+
+      <dl>
+        <dt><code>owner</code> <code class="type">string</code> <span class="required">required</span></dt>
+        <dd>
+          Gitea organization or user (from URL)
+        </dd>
+      </dl>
+
+      <div class="m-documentation--example">
+        <pre class="example"><code class="language-json">
+{
+  "type": "GENERATE:GITEA-MILESTONE",
   "params": {
     "owner": "gitea"
   }

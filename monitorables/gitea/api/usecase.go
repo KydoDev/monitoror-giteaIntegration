@@ -13,6 +13,7 @@ const (
 	GiteaChecksTileType        coreModels.TileType = "GITEA-CHECKS"
 	GiteaPullRequestTileType   coreModels.TileType = "GITEA-PULLREQUEST"
 	GiteaContributionsTileType coreModels.TileType = "GITEA-CONTRIBUTIONS"
+	GiteaMilestoneTileType     coreModels.TileType = "GITEA-MILESTONE"
 )
 
 type (
@@ -21,8 +22,10 @@ type (
 		Checks(params *models.ChecksParams) (*coreModels.Tile, error)
 		PullRequest(params *models.PullRequestParams) (*coreModels.Tile, error)
 		Contributions(params *models.ContributionsParams) (*coreModels.Tile, error)
+		Milestone(params *models.MilestoneParams) (*coreModels.Tile, error)
 
 		ChecksGenerator(params interface{}) ([]uiConfigModels.GeneratedTile, error)
 		PullRequestsGenerator(params interface{}) ([]uiConfigModels.GeneratedTile, error)
+		MilestonesGenerator(params interface{}) ([]uiConfigModels.GeneratedTile, error)
 	}
 )
