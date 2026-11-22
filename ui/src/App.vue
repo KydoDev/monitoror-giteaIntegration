@@ -59,6 +59,13 @@ import useErrors from '@/composables/useErrors'
 import TileConfig from '@/types/tileConfig'
 
 const SHOW_CURSOR_DELAY = 10 // 10 seconds
+// Must match --tiles-gap
+const TILES_GAP = 6
+// Grid cell size of the original design (1920x1080 screen, 4 columns and 4 rows): zoom 1
+const REFERENCE_CELL_WIDTH = 470
+const REFERENCE_CELL_HEIGHT = 260
+const MIN_AUTO_ZOOM = 0.4
+const MAX_AUTO_ZOOM = 3
 
 export default defineComponent({
   name: 'MonitororApp',
@@ -95,17 +102,26 @@ export default defineComponent({
       return store.state.tiles
     })
 
+    const viewport = ref({width: window.innerWidth, height: window.innerHeight})
+
     const cssProperties = computed(() => {
       const columns = store.state.columns
-      const zoom = store.state.zoom
       const tilesCount = tiles.value.reduce((accumulator, tile) => {
         return accumulator + (tile.rowSpan || 1) * (tile.columnSpan || 1)
       }, 0)
+      const rows = Math.ceil(tilesCount / columns)
+
+      // Scale the tile content with the size of a grid cell, so that texts, icons and images follow the screen
+      // size and the number of tiles. The configured zoom still applies on top of it.
+      const cellWidth = (viewport.value.width - TILES_GAP) / columns - TILES_GAP
+      const cellHeight = (viewport.value.height - TILES_GAP) / Math.max(rows, 1) - TILES_GAP
+      const scale = Math.min(cellWidth / REFERENCE_CELL_WIDTH, cellHeight / REFERENCE_CELL_HEIGHT)
+      const autoZoom = Math.min(MAX_AUTO_ZOOM, Math.max(MIN_AUTO_ZOOM, scale))
 
       return {
         '--columns': columns,
-        '--rows': Math.ceil(tilesCount / columns),
-        '--zoom': zoom,
+        '--rows': rows,
+        '--zoom': store.state.zoom * autoZoom,
       }
     })
 
@@ -154,6 +170,8 @@ export default defineComponent({
     }
 
     const onResize = () => {
+      viewport.value = {width: window.innerWidth, height: window.innerHeight}
+
       if (shouldDisableTransitionsTimeout.value !== undefined) {
         clearTimeout(shouldDisableTransitionsTimeout.value)
       }
