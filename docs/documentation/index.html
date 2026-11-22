@@ -1300,7 +1300,9 @@ MO_MONITORABLE_GITEA_SSLVERIFY=true
 
         <dt><code>organization</code> <code class="type">string</code></dt>
         <dd>
-          Gitea organization name (from URL): the contributions of its visible members are summed
+          Gitea organization name (from URL): the contributions of its visible members (first 100) are summed,
+          including their activity outside the organization. Members whose activity is hidden are skipped.
+          Refreshed every 15 minutes.
         </dd>
 
         <dt><code>weeks</code> <code class="type">number</code></dt>
@@ -1527,7 +1529,8 @@ MO_MONITORABLE_GITEA_SSLVERIFY=true
 
       <p class="note">
         <span class="tag">Note</span>
-        For an organization the runs are read in one request; for a user, each repository is read.
+        For an organization the runs are read in one request (the latest 50 runs); for a user, each repository is
+        read (the first 30). Refreshed every 20 seconds.
         Requires UI configuration <code>"version": "2.1"</code> or higher.
       </p>
 

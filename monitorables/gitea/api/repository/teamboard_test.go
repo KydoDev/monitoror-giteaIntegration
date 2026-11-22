@@ -170,3 +170,17 @@ func TestGiteaRepository_TeamBoardErrors(t *testing.T) {
 	_, err = repository.GetOrganizationMembers("acme")
 	assert.Error(t, err)
 }
+
+func TestGiteaRepository_GetFeedCommits_OrganizationErrorIsReported(t *testing.T) {
+	calls := 0
+	repository := initRepository(t, "", func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		w.WriteHeader(http.StatusBadGateway)
+	})
+
+	_, err := repository.GetFeedCommits("acme", 10)
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "status 502")
+		assert.Equal(t, 1, calls)
+	}
+}

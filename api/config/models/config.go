@@ -24,8 +24,8 @@ type (
 
 	// AutoScroll scrolls through the rows below the screen, in seconds spent at the top and at the bottom
 	AutoScroll struct {
-		Top    *int `json:"top,omitempty" validate:"omitempty,gt=0"`
-		Bottom *int `json:"bottom,omitempty" validate:"omitempty,gt=0"`
+		Top    *int `json:"top,omitempty" validate:"omitempty,gt=0,lte=86400"`
+		Bottom *int `json:"bottom,omitempty" validate:"omitempty,gt=0,lte=86400"`
 	}
 
 	TileConfig struct {

@@ -17,7 +17,10 @@ import (
 	. "github.com/stretchr/testify/mock"
 )
 
-var boardNow = time.Date(2026, time.November, 22, 12, 0, 0, 0, time.UTC)
+var (
+	boardNow = time.Date(2026, time.November, 22, 12, 0, 0, 0, time.UTC)
+	notFound = &models.StatusError{StatusCode: 404, Body: "Not Found"}
+)
 
 func newBoardUsecase(repository *mocks.Repository) *giteaUsecase {
 	gu := NewGiteaUsecase(repository).(*giteaUsecase)
@@ -80,15 +83,15 @@ func TestIssues_CustomBugLabelAndError(t *testing.T) {
 		{Number: 1, Title: "a", Labels: []string{"bug"}},
 	}, nil).Once()
 	mockRepository.On("SearchIssues", "acme", "issues").Return(nil, errors.New("boom"))
-	gu := newBoardUsecase(mockRepository)
 
-	tile, err := gu.Issues(&models.IssuesListParams{Owner: "acme", BugLabel: "kind/bug"})
+	tile, err := newBoardUsecase(mockRepository).Issues(&models.IssuesListParams{Owner: "acme", BugLabel: "kind/bug"})
 	if assert.NoError(t, err) {
 		assert.Equal(t, coreModels.SuccessStatus, tile.Status)
 		assert.Equal(t, "0 bugs", tile.Message)
 	}
 
-	_, err = gu.Issues(&models.IssuesListParams{Owner: "acme"})
+	// A new usecase has an empty cache
+	_, err = newBoardUsecase(mockRepository).Issues(&models.IssuesListParams{Owner: "acme"})
 	if assert.Error(t, err) {
 		assert.Equal(t, "unable to load issues", err.Error())
 	}
@@ -122,7 +125,7 @@ func TestActions_LatestPerWorkflow(t *testing.T) {
 
 func TestActions_UserFallsBackToRepositories(t *testing.T) {
 	mockRepository := new(mocks.Repository)
-	mockRepository.On("GetOwnerRuns", "alice").Return(nil, errors.New("404"))
+	mockRepository.On("GetOwnerRuns", "alice").Return(nil, notFound)
 	mockRepository.On("GetRepositories", "alice").Return([]models.Repository{
 		{Name: "blog"}, {Name: "old", Archived: true}, {Name: "broken"},
 	}, nil)
@@ -131,7 +134,8 @@ func TestActions_UserFallsBackToRepositories(t *testing.T) {
 	}, nil)
 	mockRepository.On("GetRuns", "alice", "broken", "").Return(nil, errors.New("boom"))
 
-	tile, err := newBoardUsecase(mockRepository).Actions(&models.ListParams{Owner: "alice"})
+	gu := newBoardUsecase(mockRepository)
+	tile, err := gu.Actions(&models.ListParams{Owner: "alice"})
 	if assert.NoError(t, err) {
 		assert.Equal(t, coreModels.SuccessStatus, tile.Status)
 		assert.Equal(t, []coreModels.TileItem{
@@ -139,11 +143,19 @@ func TestActions_UserFallsBackToRepositories(t *testing.T) {
 		}, tile.Items)
 		mockRepository.AssertNotCalled(t, "GetRuns", "alice", "old", "")
 	}
+
+	// The runs are cached; once expired, the owner-wide endpoint is not tried again for a while
+	_, _ = gu.Actions(&models.ListParams{Owner: "alice"})
+	mockRepository.AssertNumberOfCalls(t, "GetRuns", 2)
+	gu.now = func() time.Time { return boardNow.Add(runsTTL) }
+	_, _ = gu.Actions(&models.ListParams{Owner: "alice"})
+	mockRepository.AssertNumberOfCalls(t, "GetOwnerRuns", 1)
+	mockRepository.AssertNumberOfCalls(t, "GetRuns", 4)
 }
 
 func TestActions_Error(t *testing.T) {
 	mockRepository := new(mocks.Repository)
-	mockRepository.On("GetOwnerRuns", "acme").Return(nil, errors.New("404"))
+	mockRepository.On("GetOwnerRuns", "acme").Return(nil, notFound)
 	mockRepository.On("GetRepositories", "acme").Return(nil, errors.New("boom"))
 
 	_, err := newBoardUsecase(mockRepository).Actions(&models.ListParams{Owner: "acme"})
@@ -361,4 +373,121 @@ func TestTeamBoardHelpers(t *testing.T) {
 		m.On("GetRepositories", "x").Return([]models.Repository{{Name: "y"}}, nil)
 		return m
 	}()).defaultBranch("x", "y"))
+}
+
+func TestActions_OwnerErrorIsNotAFallback(t *testing.T) {
+	mockRepository := new(mocks.Repository)
+	mockRepository.On("GetOwnerRuns", "acme").Return(nil, &models.StatusError{StatusCode: 502})
+
+	_, err := newBoardUsecase(mockRepository).Actions(&models.ListParams{Owner: "acme"})
+	if assert.Error(t, err) {
+		mockRepository.AssertNotCalled(t, "GetRepositories", AnythingOfType("string"))
+	}
+}
+
+func TestActions_RunningWithoutStart(t *testing.T) {
+	mockRepository := new(mocks.Repository)
+	mockRepository.On("GetOwnerRuns", "acme").Return([]models.Run{
+		{ID: 1, Repository: "shop", Workflow: "ci.yml", Status: "in_progress", CreatedAt: boardNow},
+		{ID: 2, Repository: "api", Workflow: "ci.yml", Status: "in_progress", CreatedAt: boardNow, StartedAt: boardNow.Add(time.Minute)},
+	}, nil)
+
+	tile, err := newBoardUsecase(mockRepository).Actions(&models.ListParams{Owner: "acme"})
+	if assert.NoError(t, err) && assert.Len(t, tile.Items, 2) {
+		assert.Equal(t, "running", tile.Items[0].Detail)
+		assert.Nil(t, tile.Items[0].Progress)
+		assert.Equal(t, "0s", tile.Items[1].Detail)
+	}
+}
+
+func TestPullRequests_CachedSearchIsNotMutated(t *testing.T) {
+	mockRepository := new(mocks.Repository)
+	mockRepository.On("SearchIssues", "acme", "pulls").Return([]models.Issue{
+		{Number: 2, CreatedAt: boardNow},
+		{Number: 1, CreatedAt: boardNow.Add(-time.Hour)},
+	}, nil)
+	gu := newBoardUsecase(mockRepository)
+
+	_, _ = gu.PullRequests(&models.ListParams{Owner: "acme"})
+	issues, err := gu.searchIssues("acme", "pulls")
+	if assert.NoError(t, err) {
+		assert.Equal(t, 2, issues[0].Number, "the cached slice keeps the order of Gitea")
+		mockRepository.AssertNumberOfCalls(t, "SearchIssues", 1)
+	}
+}
+
+func TestRepository_BugLabelIsNotInTheCacheKey(t *testing.T) {
+	mockRepository := new(mocks.Repository)
+	mockRepository.On("GetChecks", "acme", "shop", "main").Return(&models.Checks{}, nil)
+	mockRepository.On("GetRuns", "acme", "shop", "main").Return(nil, nil)
+	mockRepository.On("GetCommits", "acme", "shop", "main", AnythingOfType("time.Time")).Return(nil, nil)
+	mockRepository.On("GetCount", AnythingOfType("*models.CountParams")).Return(0, nil)
+	mockRepository.On("GetRepositoryIssues", "acme", "shop").Return([]models.Issue{{Labels: []string{"defect"}}}, nil)
+	mockRepository.On("GetMilestones", "acme", "shop").Return(nil, nil)
+	gu := newBoardUsecase(mockRepository)
+
+	tile, _ := gu.Repository(&models.RepositoryParams{Owner: "acme", Repository: "shop", Ref: "main"})
+	assert.Len(t, tile.Items, 2)
+	tile, _ = gu.Repository(&models.RepositoryParams{Owner: "acme", Repository: "shop", Ref: "main", BugLabel: "defect"})
+	assert.Equal(t, coreModels.TileItem{Label: "Bugs", Detail: "1", Tag: "bug"}, tile.Items[2])
+	mockRepository.AssertNumberOfCalls(t, "GetRepositoryIssues", 1)
+}
+
+func TestRepository_ErrorTileType(t *testing.T) {
+	mockRepository := new(mocks.Repository)
+	mockRepository.On("GetChecks", "acme", "shop", "main").Return(nil, errors.New("boom"))
+
+	_, err := newBoardUsecase(mockRepository).Repository(&models.RepositoryParams{Owner: "acme", Repository: "shop", Ref: "main"})
+	var monitororError *coreModels.MonitororError
+	if assert.ErrorAs(t, err, &monitororError) {
+		assert.Equal(t, api.GiteaRepositoryTileType, monitororError.Tile.Type)
+	}
+}
+
+func TestContributions_OrganizationSkipsFailingMembers(t *testing.T) {
+	mockRepository := new(mocks.Repository)
+	mockRepository.On("GetOrganizationMembers", "acme").Return([]string{"alice", "ghost"}, nil)
+	mockRepository.On("GetContributions", "alice").Return([]models.Contribution{{Time: boardNow, Count: 2}}, nil)
+	mockRepository.On("GetContributions", "ghost").Return(nil, notFound)
+	gu := newBoardUsecase(mockRepository)
+
+	tile, err := gu.Contributions(&models.ContributionsParams{Organization: "acme", Weeks: 1})
+	if assert.NoError(t, err) {
+		assert.Contains(t, tile.Metrics.Values, "2")
+	}
+
+	// Cached
+	_, _ = gu.Contributions(&models.ContributionsParams{Organization: "acme", Weeks: 1})
+	mockRepository.AssertNumberOfCalls(t, "GetOrganizationMembers", 1)
+}
+
+func TestContributions_OrganizationAllMembersFail(t *testing.T) {
+	mockRepository := new(mocks.Repository)
+	mockRepository.On("GetOrganizationMembers", "acme").Return([]string{"ghost"}, nil)
+	mockRepository.On("GetContributions", "ghost").Return(nil, notFound)
+
+	_, err := newBoardUsecase(mockRepository).Contributions(&models.ContributionsParams{Organization: "acme"})
+	if assert.Error(t, err) {
+		assert.Equal(t, "unable to load contributions", err.Error())
+	}
+}
+
+func TestTTLCache_Bounded(t *testing.T) {
+	cache := newTTLCache()
+	load := func() (interface{}, error) { return 1, nil }
+
+	for i := 0; i < maxEntries; i++ {
+		_, _ = cache.get(cacheKey("k", string(rune('a'+i%26)), time.Duration(i).String()), time.Minute, boardNow, load)
+	}
+	assert.Len(t, cache.entries, maxEntries)
+
+	// Expired entries are removed first
+	_, _ = cache.get("new", time.Minute, boardNow.Add(time.Hour), load)
+	assert.Len(t, cache.entries, 1)
+
+	// Without expired entries, the cache starts over
+	for i := 0; i < maxEntries; i++ {
+		_, _ = cache.get(cacheKey("x", time.Duration(i).String()), time.Hour, boardNow.Add(time.Hour), load)
+	}
+	assert.LessOrEqual(t, len(cache.entries), maxEntries)
 }
