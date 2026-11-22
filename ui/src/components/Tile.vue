@@ -33,7 +33,7 @@
                             :config="subTile"></monitoror-sub-tile>
       </div>
 
-      <template v-if="isContributions && contributions && contributions.length > 0">
+      <template v-if="hasContributionsGraph">
         <monitoror-contributions-graph :values="contributions"
                                        class="c-monitoror-tile--contributions"></monitoror-contributions-graph>
         <div class="c-monitoror-tile--contributions-total">
@@ -146,6 +146,7 @@ export default defineComponent({
         'c-monitoror-tile__status-canceled': status.value === TileStatus.Canceled,
         'c-monitoror-tile__status-action-required': status.value === TileStatus.ActionRequired,
         'c-monitoror-tile__contributions': isContributions.value && isSucceeded.value,
+        'c-monitoror-tile__with-contributions': hasContributionsGraph.value,
       }
     })
 
@@ -209,6 +210,10 @@ export default defineComponent({
       return (state.value.metrics.values || []).map((value) => parseInt(value, 10) || 0)
     })
 
+    const hasContributionsGraph = computed((): boolean => {
+      return isContributions.value && contributions.value !== undefined && contributions.value.length > 0
+    })
+
     const contributionsTotal = computed((): number => {
       return (contributions.value || []).reduce((total, count) => total + count, 0)
     })
@@ -268,6 +273,7 @@ export default defineComponent({
       isContributions,
       contributions,
       contributionsTotal,
+      hasContributionsGraph,
     }
   },
 })
@@ -386,12 +392,23 @@ export default defineComponent({
     transform: translate(-50%, -50%);
   }
 
+  // The grid takes all the space between the label and a small footer (icon and total)
   .c-monitoror-tile--contributions {
     position: absolute;
-    top: 60px;
+    top: calc(var(--tile-padding) + 45px);
     right: var(--tile-padding);
-    bottom: 65px;
+    bottom: calc(var(--tile-padding) + 30px);
     left: var(--tile-padding);
+  }
+
+  .c-monitoror-tile__with-contributions .c-monitoror-tile--contributions-total {
+    bottom: calc(var(--tile-padding) - 4px);
+    font-size: 20px;
+  }
+
+  .c-monitoror-tile__with-contributions .c-monitoror-tile--icon {
+    width: 22px;
+    height: 22px;
   }
 
   .c-monitoror-tile__group .c-monitoror-tile--message,
