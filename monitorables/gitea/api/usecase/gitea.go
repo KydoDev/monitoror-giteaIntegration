@@ -30,6 +30,9 @@ type (
 
 		// now returns the current time, its location defines the days of the contributions calendar
 		now func() time.Time
+
+		// aggregates keeps the slow-changing data of the team board tiles
+		aggregates *ttlCache
 	}
 )
 
@@ -52,6 +55,7 @@ func NewGiteaUsecase(repository api.Repository) api.Usecase {
 		repository:  repository,
 		buildsCache: cache.NewBuildCache(buildCacheSize),
 		now:         time.Now,
+		aggregates:  newTTLCache(),
 	}
 }
 
@@ -165,9 +169,24 @@ func (gu *giteaUsecase) Contributions(params *models.ContributionsParams) (*core
 	tile := coreModels.NewTile(api.GiteaContributionsTileType).WithMetrics(coreModels.NumberUnit)
 	tile.Label = params.User
 
-	items, err := gu.repository.GetContributions(params.User)
-	if err != nil {
-		return nil, &coreModels.MonitororError{Err: err, Tile: tile, Message: "unable to load contributions"}
+	users := []string{params.User}
+	if params.Organization != "" {
+		// Gitea has no organization heatmap: sum the heatmaps of its members
+		tile.Label = params.Organization
+		members, err := gu.repository.GetOrganizationMembers(params.Organization)
+		if err != nil {
+			return nil, &coreModels.MonitororError{Err: err, Tile: tile, Message: "unable to load organization members"}
+		}
+		users = members
+	}
+
+	var items []models.Contribution
+	for _, user := range users {
+		userItems, err := gu.repository.GetContributions(user)
+		if err != nil {
+			return nil, &coreModels.MonitororError{Err: err, Tile: tile, Message: "unable to load contributions"}
+		}
+		items = append(items, userItems...)
 	}
 
 	// Gitea groups contributions in 15 minutes slots: sum them per day, in the location of the server

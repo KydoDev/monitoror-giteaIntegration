@@ -98,6 +98,13 @@
               <li><a href="#tile-generate-gitea-checks"><span class="tag-generate">GENERATE:</span>GITEA-CHECKS</a></li>
               <li><a href="#tile-gitea-milestone">GITEA-MILESTONE</a></li>
               <li><a href="#tile-generate-gitea-milestone"><span class="tag-generate">GENERATE:</span>GITEA-MILESTONE</a></li>
+              <li><a href="#tile-gitea-pullrequests">GITEA-PULLREQUESTS</a></li>
+              <li><a href="#tile-gitea-issues">GITEA-ISSUES</a></li>
+              <li><a href="#tile-gitea-actions">GITEA-ACTIONS</a></li>
+              <li><a href="#tile-gitea-milestones">GITEA-MILESTONES</a></li>
+              <li><a href="#tile-gitea-commits">GITEA-COMMITS</a></li>
+              <li><a href="#tile-gitea-repository">GITEA-REPOSITORY</a></li>
+              <li><a href="#tile-generate-gitea-repository"><span class="tag-generate">GENERATE:</span>GITEA-REPOSITORY</a></li>
             </ul>
           </li>
           <li>
@@ -641,6 +648,23 @@ MO_CONFIG_PRODUCTION="/etc/monitoror/production.json"
         <dd>
           Zoom factor applied to all tiles. <br>
           <span class="tag">Default:</span> <code>1</code>
+        </dd>
+
+        <dt><code>screenRows</code> <code class="type">number</code></dt>
+        <dd>
+          Number of tile rows shown on one screen. Tiles beyond these rows are placed below the screen and
+          the page scrolls. Without it, all the tiles fit on one screen.
+        </dd>
+
+        <dt><code>autoScroll</code> <code class="type">object</code></dt>
+        <dd>
+          With <code>screenRows</code>, scrolls the page one screen at a time, then back to the top, forever.
+          Scrolling pauses for 30 seconds when someone uses the page.
+          <ul>
+            <li><code>top</code>: seconds spent on each screen before scrolling down (default <code>60</code>)</li>
+            <li><code>bottom</code>: seconds spent on the last screen before going back to the top (default <code>20</code>)</li>
+          </ul>
+          <span class="tag">Example</span> <code>"autoScroll": { "top": 90, "bottom": 20 }</code>
         </dd>
 
         <dt><code>tiles</code> <code class="type">Tile[]</code> <span class="required">required</span></dt>
@@ -1253,13 +1277,9 @@ MO_MONITORABLE_GITEA_SSLVERIFY=true
       <h4 id="tile-gitea-contributions">GITEA-CONTRIBUTIONS</h4>
 
       <p>
-        Show the contributions calendar of a Gitea user, like the one of the profile page,
+        Show the contributions calendar of a Gitea user or of a whole organization, like the one of the profile page,
         with the total number of contributions of the period. Each column is a week, from Sunday to Saturday.
         Use <code>columnSpan</code> to display more weeks with bigger cells.
-      <h4 id="tile-generate-gitea-checks">GENERATE:<wbr>GITEA-CHECKS</h4>
-
-      <p>
-        Show the status of the default branch of each repository of a Gitea organization or user.
       </p>
 
       <p class="note">
@@ -1268,18 +1288,19 @@ MO_MONITORABLE_GITEA_SSLVERIFY=true
         Days are computed in the time zone of the Monitoror server: set the <code>TZ</code> environment variable
         (for example <code>TZ=Europe/Rome</code>) when it differs from yours. The user heatmap must be enabled on the
         Gitea instance (<code>ENABLE_USER_HEATMAP</code>, enabled by default).
-        This tile is a generator tile that will be replaced by N classic
-        <code><a href="#tile-gitea-checks">GITEA-CHECKS</a></code> tiles, labelled with the repository name. <br>
-        N being the number of repositories visible with the configured token, archived and empty repositories excluded.
-        Requires UI configuration <code>"version": "2.1"</code> or higher.
       </p>
 
       <h5 class="m-documentation--configuration-side-title">UI configuration</h5>
 
       <dl>
-        <dt><code>user</code> <code class="type">string</code> <span class="required">required</span></dt>
+        <dt><code>user</code> <code class="type">string</code></dt>
         <dd>
-          Gitea user name (from URL)
+          Gitea user name (from URL). One of <code>user</code> or <code>organization</code> is required.
+        </dd>
+
+        <dt><code>organization</code> <code class="type">string</code></dt>
+        <dd>
+          Gitea organization name (from URL): the contributions of its visible members are summed
         </dd>
 
         <dt><code>weeks</code> <code class="type">number</code></dt>
@@ -1298,6 +1319,28 @@ MO_MONITORABLE_GITEA_SSLVERIFY=true
   "params": {
     "user": "johndoe",
     "weeks": 26
+  }
+}
+        </code></pre>
+      </div>
+
+      <h4 id="tile-generate-gitea-checks">GENERATE:<wbr>GITEA-CHECKS</h4>
+
+      <p>
+        Show the status of the default branch of each repository of a Gitea organization or user.
+      </p>
+
+      <p class="note">
+        <span class="tag">Note</span>
+        This tile is a generator tile that will be replaced by N classic
+        <code><a href="#tile-gitea-checks">GITEA-CHECKS</a></code> tiles, labelled with the repository name. <br>
+        N being the number of repositories visible with the configured token, archived and empty repositories excluded.
+        Requires UI configuration <code>"version": "2.1"</code> or higher.
+      </p>
+
+      <h5 class="m-documentation--configuration-side-title">UI configuration</h5>
+
+      <dl>
         <dt><code>owner</code> <code class="type">string</code> <span class="required">required</span></dt>
         <dd>
           Gitea organization or user (from URL)
@@ -1382,6 +1425,302 @@ MO_MONITORABLE_GITEA_SSLVERIFY=true
         <pre class="example"><code class="language-json">
 {
   "type": "GENERATE:GITEA-MILESTONE",
+  "params": {
+    "owner": "gitea"
+  }
+}
+        </code></pre>
+      </div>
+
+      <h4 id="tile-gitea-pullrequests">GITEA-PULLREQUESTS</h4>
+
+      <p>
+        Show the number of open pull requests of every repository of a Gitea organization or user, with the list of
+        those waiting for the longest time first: number, title, repository and age.
+      </p>
+
+      <p class="note">
+        <span class="tag">Note</span>
+        Requires UI configuration <code>"version": "2.1"</code> or higher.
+      </p>
+
+      <h5 class="m-documentation--configuration-side-title">UI configuration</h5>
+
+      <dl>
+        <dt><code>owner</code> <code class="type">string</code> <span class="required">required</span></dt>
+        <dd>
+          Gitea organization or user (from URL)
+        </dd>
+
+        <dt><code>limit</code> <code class="type">number</code></dt>
+        <dd>
+          Number of pull requests listed, from 1 to 20 <br>
+          <span class="tag">Default:</span> <code>5</code>
+        </dd>
+      </dl>
+
+      <div class="m-documentation--example">
+        <pre class="example"><code class="language-json">
+{
+  "type": "GITEA-PULLREQUESTS",
+  "params": {
+    "owner": "gitea",
+    "limit": 6
+  }
+}
+        </code></pre>
+      </div>
+
+      <h4 id="tile-gitea-issues">GITEA-ISSUES</h4>
+
+      <p>
+        Show the number of open issues of every repository of a Gitea organization or user, with the list of the bugs
+        first, then the other issues, oldest first. Bugs are the issues with the bug label; the tile turns to warning
+        when there is at least one.
+      </p>
+
+      <p class="note">
+        <span class="tag">Note</span>
+        Requires UI configuration <code>"version": "2.1"</code> or higher.
+      </p>
+
+      <h5 class="m-documentation--configuration-side-title">UI configuration</h5>
+
+      <dl>
+        <dt><code>owner</code> <code class="type">string</code> <span class="required">required</span></dt>
+        <dd>
+          Gitea organization or user (from URL)
+        </dd>
+
+        <dt><code>limit</code> <code class="type">number</code></dt>
+        <dd>
+          Number of issues listed, from 1 to 20 <br>
+          <span class="tag">Default:</span> <code>5</code>
+        </dd>
+
+        <dt><code>bugLabel</code> <code class="type">string</code></dt>
+        <dd>
+          Name of the label of bugs (case insensitive) <br>
+          <span class="tag">Default:</span> <code>bug</code>
+        </dd>
+      </dl>
+
+      <div class="m-documentation--example">
+        <pre class="example"><code class="language-json">
+{
+  "type": "GITEA-ISSUES",
+  "params": {
+    "owner": "gitea",
+    "bugLabel": "kind/bug"
+  }
+}
+        </code></pre>
+      </div>
+
+      <h4 id="tile-gitea-actions">GITEA-ACTIONS</h4>
+
+      <p>
+        Show the latest Gitea Actions run of each workflow of every repository of a Gitea organization or user, with the
+        number of running workflows. Running runs come first, with a progress bar estimated from previous successful
+        runs, then queued and failed runs, then the others. The tile turns to failure when a latest run failed.
+      </p>
+
+      <p class="note">
+        <span class="tag">Note</span>
+        For an organization the runs are read in one request; for a user, each repository is read.
+        Requires UI configuration <code>"version": "2.1"</code> or higher.
+      </p>
+
+      <h5 class="m-documentation--configuration-side-title">UI configuration</h5>
+
+      <dl>
+        <dt><code>owner</code> <code class="type">string</code> <span class="required">required</span></dt>
+        <dd>
+          Gitea organization or user (from URL)
+        </dd>
+
+        <dt><code>limit</code> <code class="type">number</code></dt>
+        <dd>
+          Number of runs listed, from 1 to 20 <br>
+          <span class="tag">Default:</span> <code>5</code>
+        </dd>
+      </dl>
+
+      <div class="m-documentation--example">
+        <pre class="example"><code class="language-json">
+{
+  "type": "GITEA-ACTIONS",
+  "params": {
+    "owner": "gitea"
+  }
+}
+        </code></pre>
+      </div>
+
+      <h4 id="tile-gitea-milestones">GITEA-MILESTONES</h4>
+
+      <p>
+        Show the open milestones of every repository of a Gitea organization or user, due first, with their due date and
+        progress. Each milestone has the status of a <code><a href="#tile-gitea-milestone">GITEA-MILESTONE</a></code>
+        tile; the tile takes the worst one.
+      </p>
+
+      <p class="note">
+        <span class="tag">Note</span>
+        Requires UI configuration <code>"version": "2.1"</code> or higher.
+      </p>
+
+      <h5 class="m-documentation--configuration-side-title">UI configuration</h5>
+
+      <dl>
+        <dt><code>owner</code> <code class="type">string</code> <span class="required">required</span></dt>
+        <dd>
+          Gitea organization or user (from URL)
+        </dd>
+
+        <dt><code>limit</code> <code class="type">number</code></dt>
+        <dd>
+          Number of milestones listed, from 1 to 20 <br>
+          <span class="tag">Default:</span> <code>5</code>
+        </dd>
+      </dl>
+
+      <div class="m-documentation--example">
+        <pre class="example"><code class="language-json">
+{
+  "type": "GITEA-MILESTONES",
+  "params": {
+    "owner": "gitea"
+  }
+}
+        </code></pre>
+      </div>
+
+      <h4 id="tile-gitea-commits">GITEA-COMMITS</h4>
+
+      <p>
+        Show the latest commits pushed to the repositories of a Gitea organization or user, like the activity feed of
+        the Gitea home page: message, repository, author and age.
+      </p>
+
+      <p class="note">
+        <span class="tag">Note</span>
+        Requires UI configuration <code>"version": "2.1"</code> or higher.
+      </p>
+
+      <h5 class="m-documentation--configuration-side-title">UI configuration</h5>
+
+      <dl>
+        <dt><code>owner</code> <code class="type">string</code> <span class="required">required</span></dt>
+        <dd>
+          Gitea organization or user (from URL)
+        </dd>
+
+        <dt><code>limit</code> <code class="type">number</code></dt>
+        <dd>
+          Number of commits listed, from 1 to 20 <br>
+          <span class="tag">Default:</span> <code>5</code>
+        </dd>
+      </dl>
+
+      <div class="m-documentation--example">
+        <pre class="example"><code class="language-json">
+{
+  "type": "GITEA-COMMITS",
+  "columnSpan": 2,
+  "params": {
+    "owner": "gitea",
+    "limit": 10
+  }
+}
+        </code></pre>
+      </div>
+
+      <h4 id="tile-gitea-repository">GITEA-REPOSITORY</h4>
+
+      <p>
+        Sum up a repository in one tile: build status of a branch (like
+        <code><a href="#tile-gitea-checks">GITEA-CHECKS</a></code>), commit activity of the last 12 weeks, number of
+        open pull requests, issues and bugs, and next milestone. A repository without CI is shown as success.
+      </p>
+
+      <p class="note">
+        <span class="tag">Note</span>
+        Commit activity, counts and milestone are refreshed every minute.
+        Requires UI configuration <code>"version": "2.1"</code> or higher.
+      </p>
+
+      <h5 class="m-documentation--configuration-side-title">UI configuration</h5>
+
+      <dl>
+        <dt><code>owner</code> <code class="type">string</code> <span class="required">required</span></dt>
+        <dd>
+          Gitea organization or user (from URL)
+        </dd>
+
+        <dt><code>repository</code> <code class="type">string</code> <span class="required">required</span></dt>
+        <dd>
+          Gitea repository name (from URL)
+        </dd>
+
+        <dt><code>ref</code> <code class="type">string</code></dt>
+        <dd>
+          Branch of the build status and commit activity <br>
+          <span class="tag">Default:</span> default branch of the repository
+        </dd>
+
+        <dt><code>bugLabel</code> <code class="type">string</code></dt>
+        <dd>
+          Name of the label of bugs (case insensitive) <br>
+          <span class="tag">Default:</span> <code>bug</code>
+        </dd>
+      </dl>
+
+      <div class="m-documentation--example">
+        <pre class="example"><code class="language-json">
+{
+  "type": "GITEA-REPOSITORY",
+  "params": {
+    "owner": "gitea",
+    "repository": "tea"
+  }
+}
+        </code></pre>
+      </div>
+
+      <h4 id="tile-generate-gitea-repository">GENERATE:<wbr>GITEA-REPOSITORY</h4>
+
+      <p>
+        Sum up each repository of a Gitea organization or user.
+      </p>
+
+      <p class="note">
+        <span class="tag">Note</span>
+        This tile is a generator tile that will be replaced by N classic
+        <code><a href="#tile-gitea-repository">GITEA-REPOSITORY</a></code> tiles, labelled with the repository name. <br>
+        N being the number of repositories visible with the configured token, archived and empty repositories excluded.
+        Requires UI configuration <code>"version": "2.1"</code> or higher.
+      </p>
+
+      <h5 class="m-documentation--configuration-side-title">UI configuration</h5>
+
+      <dl>
+        <dt><code>owner</code> <code class="type">string</code> <span class="required">required</span></dt>
+        <dd>
+          Gitea organization or user (from URL)
+        </dd>
+
+        <dt><code>bugLabel</code> <code class="type">string</code></dt>
+        <dd>
+          Name of the label of bugs (case insensitive) <br>
+          <span class="tag">Default:</span> <code>bug</code>
+        </dd>
+      </dl>
+
+      <div class="m-documentation--example">
+        <pre class="example"><code class="language-json">
+{
+  "type": "GENERATE:GITEA-REPOSITORY",
   "params": {
     "owner": "gitea"
   }

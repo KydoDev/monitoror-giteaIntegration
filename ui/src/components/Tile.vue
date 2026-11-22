@@ -24,9 +24,22 @@
         {{ message }}
       </div>
 
-      <div class="c-monitoror-tile--value" v-if="displayedMetric && !isContributions">
+      <div class="c-monitoror-tile--value" v-if="displayedMetric && !isContributions && !isList && !isRepository">
         {{ displayedMetric }}
       </div>
+
+      <div class="c-monitoror-tile--count" v-if="isList && listCount !== undefined">
+        {{ listCount }}
+      </div>
+
+      <monitoror-tile-item-list v-if="isList && items.length > 0" :items="items"
+                                class="c-monitoror-tile--item-list"></monitoror-tile-item-list>
+
+      <monitoror-sparkline v-if="hasSparkline" :values="activity"
+                           class="c-monitoror-tile--sparkline"></monitoror-sparkline>
+
+      <monitoror-tile-chips v-if="isRepository && items.length > 0" :items="items"
+                            class="c-monitoror-tile--chips"></monitoror-tile-chips>
 
       <div class="c-monitoror-tile--sub-tiles" v-if="isGroup">
         <monitoror-sub-tile v-for="subTile in displayedSubTiles" :key="subTile.stateKey"
@@ -81,15 +94,30 @@ import TileType from '@/enums/tileType'
 import TileConfig from '@/types/tileConfig'
 
 import MonitororContributionsGraph from '@/components/ContributionsGraph.vue'
+import MonitororSparkline from '@/components/Sparkline.vue'
 import MonitororSubTile from '@/components/SubTile.vue'
+import MonitororTileChips from '@/components/TileChips.vue'
 import MonitororTileIcon from '@/components/TileIcon.vue'
+import MonitororTileItemList from '@/components/TileItemList.vue'
+import TileItem from '@/types/tileItem'
+
+const LIST_TILE_TYPES: TileType[] = [
+  TileType.GiteaPullRequests,
+  TileType.GiteaIssues,
+  TileType.GiteaActions,
+  TileType.GiteaMilestones,
+  TileType.GiteaCommits,
+]
 
 export default defineComponent({
   name: 'MonitororTile',
   components: {
     MonitororContributionsGraph,
+    MonitororSparkline,
     MonitororSubTile,
+    MonitororTileChips,
     MonitororTileIcon,
+    MonitororTileItemList,
   },
   props: {
     config: {
@@ -147,6 +175,8 @@ export default defineComponent({
         'c-monitoror-tile__status-action-required': status.value === TileStatus.ActionRequired,
         'c-monitoror-tile__contributions': isContributions.value && isSucceeded.value,
         'c-monitoror-tile__with-contributions': hasContributionsGraph.value,
+        'c-monitoror-tile__list': isList.value,
+        'c-monitoror-tile__repository': isRepository.value,
       }
     })
 
@@ -218,6 +248,48 @@ export default defineComponent({
       return (contributions.value || []).reduce((total, count) => total + count, 0)
     })
 
+    // Team board tiles: a list of items (pull requests, issues, ...) with the total count
+    const isList = computed((): boolean => {
+      return LIST_TILE_TYPES.includes(type.value)
+    })
+
+    const isRepository = computed((): boolean => {
+      return type.value === TileType.GiteaRepository
+    })
+
+    const items = computed((): TileItem[] => {
+      if (state.value === undefined || state.value.items === undefined) {
+        return []
+      }
+
+      return state.value.items
+    })
+
+    const metricValues = computed((): string[] => {
+      if (state.value === undefined || state.value.metrics === undefined) {
+        return []
+      }
+
+      return state.value.metrics.values || []
+    })
+
+    const listCount = computed((): string | undefined => {
+      if (metricValues.value.length === 0) {
+        return
+      }
+
+      return metricValues.value[metricValues.value.length - 1]
+    })
+
+    // Weekly commit counts of a repository tile, oldest first
+    const activity = computed((): number[] => {
+      return metricValues.value.map((value) => parseInt(value, 10) || 0)
+    })
+
+    const hasSparkline = computed((): boolean => {
+      return isRepository.value && activity.value.length > 0
+    })
+
     const buildId = computed((): string | undefined => {
       if (build.value === undefined) {
         return
@@ -274,6 +346,14 @@ export default defineComponent({
       contributions,
       contributionsTotal,
       hasContributionsGraph,
+
+      // team board
+      isList,
+      isRepository,
+      items,
+      listCount,
+      activity,
+      hasSparkline,
     }
   },
 })
@@ -409,6 +489,68 @@ export default defineComponent({
   .c-monitoror-tile__with-contributions .c-monitoror-tile--icon {
     width: 22px;
     height: 22px;
+  }
+
+  // Team board list tiles: label, count (top-right) and a list filling the rest of the tile, without icon
+  .c-monitoror-tile__list,
+  .c-monitoror-tile__repository {
+    .c-monitoror-tile--content {
+      display: flex;
+      flex-direction: column;
+    }
+  }
+
+  .c-monitoror-tile__list {
+    .c-monitoror-tile--label {
+      padding-right: 70px;
+      font-size: 28px;
+    }
+
+    .c-monitoror-tile--icon {
+      display: none;
+    }
+
+    .c-monitoror-tile--message {
+      font-size: 18px;
+    }
+  }
+
+  .c-monitoror-tile--count {
+    position: absolute;
+    top: calc(var(--tile-padding) + 2px);
+    right: var(--tile-padding);
+    font-size: 26px;
+    font-weight: bold;
+    line-height: 1.2;
+    opacity: 0.8;
+  }
+
+  .c-monitoror-tile--item-list {
+    flex: 1 1 0;
+    min-height: 0;
+    margin-top: 4px;
+  }
+
+  // Repository tiles: build header, sparkline filling the middle, chips above the footer (icon, finished-at)
+  .c-monitoror-tile__repository {
+    .c-monitoror-tile--message {
+      padding-top: 2px;
+      font-size: 20px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+  }
+
+  .c-monitoror-tile--sparkline {
+    flex: 1 1 0;
+    min-height: 0;
+    margin: 8px 0;
+  }
+
+  .c-monitoror-tile--chips {
+    flex: 0 0 auto;
+    margin-bottom: 52px;
   }
 
   .c-monitoror-tile__group .c-monitoror-tile--message,

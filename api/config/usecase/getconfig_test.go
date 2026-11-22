@@ -108,7 +108,7 @@ func TestUsecase_GetConfig_WithError(t *testing.T) {
 		{
 			err:       &models.ConfigUnmarshalError{Err: errors.New(`json: unknown field "test"`), RawConfig: "test json"},
 			errorID:   models.ConfigErrorUnknownField,
-			errorData: models.ConfigErrorData{FieldName: "test", ConfigExtract: "test json", Expected: "version, columns, zoom, tiles, type, label, rowSpan, columnSpan, tiles, url, initialMaxDelay, params, configVariant"},
+			errorData: models.ConfigErrorData{FieldName: "test", ConfigExtract: "test json", Expected: "version, columns, zoom, tiles, screenRows, autoScroll, type, label, rowSpan, columnSpan, tiles, url, initialMaxDelay, params, configVariant"},
 		},
 		{
 			err:       &models.ConfigUnmarshalError{Err: errors.New(`json: cannot unmarshal string into Go struct field TileConfig.tiles.test of type int`), RawConfig: "test json"},

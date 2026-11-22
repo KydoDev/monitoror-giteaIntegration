@@ -22,11 +22,17 @@ func TestContributionsParams_Validate(t *testing.T) {
 	param = &ContributionsParams{User: "test", Weeks: -1}
 	test.AssertParams(t, param, 1)
 
+	param = &ContributionsParams{Organization: "acme"}
+	test.AssertParams(t, param, 0)
+
 	param = &ContributionsParams{}
+	test.AssertParams(t, param, 1)
+
+	param = &ContributionsParams{User: "test", Organization: "acme"}
 	test.AssertParams(t, param, 1)
 }
 
 func TestContributionsParams_String(t *testing.T) {
 	param := &ContributionsParams{User: "test", Weeks: 12}
-	assert.Equal(t, "CONTRIBUTIONS-test-12", fmt.Sprint(param))
+	assert.Equal(t, "CONTRIBUTIONS-test--12", fmt.Sprint(param))
 }

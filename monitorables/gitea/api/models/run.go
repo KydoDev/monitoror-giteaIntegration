@@ -10,6 +10,8 @@ type Run struct {
 	Attempt     int64
 	Number      int64
 	Workflow    string // workflow file, e.g. "ci.yml"
+	Title       string // commit message or pull request title
+	Repository  string
 	HeadSHA     string
 	Status      string // queued, waiting, in_progress, completed ...
 	Conclusion  string // success, failure, cancelled, skipped ... (when completed)

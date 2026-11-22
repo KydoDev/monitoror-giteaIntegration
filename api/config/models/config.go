@@ -16,6 +16,16 @@ type (
 		Columns *int                    `json:"columns" validate:"required,gt=0"`
 		Zoom    *float32                `json:"zoom,omitempty" validate:"omitempty,gt=0,lte=10"`
 		Tiles   []TileConfig            `json:"tiles" validate:"required,notempty"`
+
+		// ScreenRows is the number of rows sized to fit the screen; further rows are reached by scrolling
+		ScreenRows *int        `json:"screenRows,omitempty" validate:"omitempty,gt=0"`
+		AutoScroll *AutoScroll `json:"autoScroll,omitempty"`
+	}
+
+	// AutoScroll scrolls through the rows below the screen, in seconds spent at the top and at the bottom
+	AutoScroll struct {
+		Top    *int `json:"top,omitempty" validate:"omitempty,gt=0"`
+		Bottom *int `json:"bottom,omitempty" validate:"omitempty,gt=0"`
 	}
 
 	TileConfig struct {

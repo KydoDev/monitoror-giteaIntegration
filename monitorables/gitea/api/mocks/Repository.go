@@ -3,6 +3,8 @@
 package mocks
 
 import (
+	time "time"
+
 	models "github.com/monitoror/monitoror/monitorables/gitea/api/models"
 	mock "github.com/stretchr/testify/mock"
 )
@@ -72,6 +74,36 @@ func (_m *Repository) GetCommit(owner string, repository string, sha string) (*m
 	return r0, r1
 }
 
+// GetCommits provides a mock function with given fields: owner, repository, ref, since
+func (_m *Repository) GetCommits(owner string, repository string, ref string, since time.Time) ([]models.RepositoryCommit, error) {
+	ret := _m.Called(owner, repository, ref, since)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetCommits")
+	}
+
+	var r0 []models.RepositoryCommit
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string, string, string, time.Time) ([]models.RepositoryCommit, error)); ok {
+		return rf(owner, repository, ref, since)
+	}
+	if rf, ok := ret.Get(0).(func(string, string, string, time.Time) []models.RepositoryCommit); ok {
+		r0 = rf(owner, repository, ref, since)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]models.RepositoryCommit)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(string, string, string, time.Time) error); ok {
+		r1 = rf(owner, repository, ref, since)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // GetContributions provides a mock function with given fields: user
 func (_m *Repository) GetContributions(user string) ([]models.Contribution, error) {
 	ret := _m.Called(user)
@@ -130,6 +162,36 @@ func (_m *Repository) GetCount(params *models.CountParams) (int, error) {
 	return r0, r1
 }
 
+// GetFeedCommits provides a mock function with given fields: owner, limit
+func (_m *Repository) GetFeedCommits(owner string, limit int) ([]models.FeedCommit, error) {
+	ret := _m.Called(owner, limit)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetFeedCommits")
+	}
+
+	var r0 []models.FeedCommit
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string, int) ([]models.FeedCommit, error)); ok {
+		return rf(owner, limit)
+	}
+	if rf, ok := ret.Get(0).(func(string, int) []models.FeedCommit); ok {
+		r0 = rf(owner, limit)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]models.FeedCommit)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(string, int) error); ok {
+		r1 = rf(owner, limit)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // GetMilestones provides a mock function with given fields: owner, repository
 func (_m *Repository) GetMilestones(owner string, repository string) ([]models.Milestone, error) {
 	ret := _m.Called(owner, repository)
@@ -153,6 +215,66 @@ func (_m *Repository) GetMilestones(owner string, repository string) ([]models.M
 
 	if rf, ok := ret.Get(1).(func(string, string) error); ok {
 		r1 = rf(owner, repository)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// GetOrganizationMembers provides a mock function with given fields: organization
+func (_m *Repository) GetOrganizationMembers(organization string) ([]string, error) {
+	ret := _m.Called(organization)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetOrganizationMembers")
+	}
+
+	var r0 []string
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string) ([]string, error)); ok {
+		return rf(organization)
+	}
+	if rf, ok := ret.Get(0).(func(string) []string); ok {
+		r0 = rf(organization)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]string)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(organization)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// GetOwnerRuns provides a mock function with given fields: owner
+func (_m *Repository) GetOwnerRuns(owner string) ([]models.Run, error) {
+	ret := _m.Called(owner)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetOwnerRuns")
+	}
+
+	var r0 []models.Run
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string) ([]models.Run, error)); ok {
+		return rf(owner)
+	}
+	if rf, ok := ret.Get(0).(func(string) []models.Run); ok {
+		r0 = rf(owner)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]models.Run)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(owner)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -250,6 +372,36 @@ func (_m *Repository) GetRepositories(owner string) ([]models.Repository, error)
 	return r0, r1
 }
 
+// GetRepositoryIssues provides a mock function with given fields: owner, repository
+func (_m *Repository) GetRepositoryIssues(owner string, repository string) ([]models.Issue, error) {
+	ret := _m.Called(owner, repository)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetRepositoryIssues")
+	}
+
+	var r0 []models.Issue
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string, string) ([]models.Issue, error)); ok {
+		return rf(owner, repository)
+	}
+	if rf, ok := ret.Get(0).(func(string, string) []models.Issue); ok {
+		r0 = rf(owner, repository)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]models.Issue)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(string, string) error); ok {
+		r1 = rf(owner, repository)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // GetRuns provides a mock function with given fields: owner, repository, branch
 func (_m *Repository) GetRuns(owner string, repository string, branch string) ([]models.Run, error) {
 	ret := _m.Called(owner, repository, branch)
@@ -273,6 +425,36 @@ func (_m *Repository) GetRuns(owner string, repository string, branch string) ([
 
 	if rf, ok := ret.Get(1).(func(string, string, string) error); ok {
 		r1 = rf(owner, repository, branch)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// SearchIssues provides a mock function with given fields: owner, kind
+func (_m *Repository) SearchIssues(owner string, kind string) ([]models.Issue, error) {
+	ret := _m.Called(owner, kind)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SearchIssues")
+	}
+
+	var r0 []models.Issue
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string, string) ([]models.Issue, error)); ok {
+		return rf(owner, kind)
+	}
+	if rf, ok := ret.Get(0).(func(string, string) []models.Issue); ok {
+		r0 = rf(owner, kind)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]models.Issue)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(string, string) error); ok {
+		r1 = rf(owner, kind)
 	} else {
 		r1 = ret.Error(1)
 	}

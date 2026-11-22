@@ -31,6 +31,13 @@ export default defineComponent({
         case TileType.GiteaPullRequest:
         case TileType.GiteaCount:
         case TileType.GiteaContributions:
+        case TileType.GiteaMilestone:
+        case TileType.GiteaPullRequests:
+        case TileType.GiteaIssues:
+        case TileType.GiteaActions:
+        case TileType.GiteaMilestones:
+        case TileType.GiteaCommits:
+        case TileType.GiteaRepository:
           return TileIconId.Gitea
 
         case TileType.GitHubChecks:
