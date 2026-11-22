@@ -1,6 +1,6 @@
 <template>
   <div class="c-monitoror-contributions-graph">
-    <svg :viewBox="viewBox" preserveAspectRatio="xMidYMid meet">
+    <svg :viewBox="viewBox" preserveAspectRatio="none">
       <rect v-for="cell in cells" :key="cell.index"
             :x="cell.x" :y="cell.y" :width="cellSize" :height="cellSize" rx="2"
             :fill="cell.color"></rect>
@@ -25,6 +25,7 @@ type Cell = {
 }
 
 // One column per week, one row per weekday: the first value is a Sunday, the last value is today.
+// The grid stretches to fill the space of the tile.
 export default defineComponent({
   name: 'MonitororContributionsGraph',
   props: {
