@@ -11,8 +11,8 @@ func TestPullRequestGeneratorParams_Validate(t *testing.T) {
 	test.AssertParams(t, param, 0)
 
 	param = &PullRequestGeneratorParams{Owner: "test"}
-	test.AssertParams(t, param, 1)
+	test.AssertParams(t, param, 0)
 
 	param = &PullRequestGeneratorParams{}
-	test.AssertParams(t, param, 2)
+	test.AssertParams(t, param, 1)
 }

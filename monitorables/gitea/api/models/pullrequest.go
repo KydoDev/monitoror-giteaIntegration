@@ -5,9 +5,12 @@ import (
 )
 
 type PullRequest struct {
-	ID     int
-	Title  string
-	Author coreModels.Author
+	ID int
+	// Repository of the pull request, set when searching every repository of an owner
+	Owner      string
+	Repository string
+	Title      string
+	Author     coreModels.Author
 
 	SourceOwner      string
 	SourceRepository string

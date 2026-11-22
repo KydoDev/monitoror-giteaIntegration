@@ -163,7 +163,14 @@ func (gu *giteaUsecase) ChecksGenerator(params interface{}) ([]uiConfigModels.Ge
 func (gu *giteaUsecase) PullRequestsGenerator(params interface{}) ([]uiConfigModels.GeneratedTile, error) {
 	prParams := params.(*models.PullRequestGeneratorParams)
 
-	pullRequests, err := gu.repository.GetPullRequests(prParams.Owner, prParams.Repository)
+	var pullRequests []models.PullRequest
+	var err error
+	if prParams.Repository == "" {
+		// Every repository of the owner
+		pullRequests, err = gu.repository.SearchPullRequests(prParams.Owner)
+	} else {
+		pullRequests, err = gu.repository.GetPullRequests(prParams.Owner, prParams.Repository)
+	}
 	if err != nil {
 		return nil, &coreModels.MonitororError{Err: err, Message: "unable to load pull request"}
 	}
@@ -173,6 +180,10 @@ func (gu *giteaUsecase) PullRequestsGenerator(params interface{}) ([]uiConfigMod
 		p := &models.PullRequestParams{}
 		p.Owner = prParams.Owner
 		p.Repository = prParams.Repository
+		if prParams.Repository == "" {
+			p.Owner = pullRequest.Owner
+			p.Repository = pullRequest.Repository
+		}
 		p.ID = pointer.ToInt(pullRequest.ID)
 
 		results = append(results, uiConfigModels.GeneratedTile{

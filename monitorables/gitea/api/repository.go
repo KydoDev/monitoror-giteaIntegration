@@ -10,6 +10,7 @@ type (
 		GetChecks(owner, repository, ref string) (*models.Checks, error)
 		GetPullRequest(owner, repository string, id int) (*models.PullRequest, error)
 		GetPullRequests(owner, repository string) ([]models.PullRequest, error)
+		SearchPullRequests(owner string) ([]models.PullRequest, error)
 		GetCommit(owner, repository, sha string) (*models.Commit, error)
 		GetRepositories(owner string) ([]models.Repository, error)
 	}

@@ -8,5 +8,5 @@ type PullRequestGeneratorParams struct {
 	params.Default
 
 	Owner      string `json:"owner" query:"owner" validate:"required"`
-	Repository string `json:"repository" query:"repository" validate:"required"`
+	Repository string `json:"repository,omitempty" query:"repository"` // empty: every repository of the owner
 }
