@@ -39,6 +39,8 @@ export interface RootState {
   configVersion: string | undefined,
   columns: number,
   zoom: number,
+  screenRows: number | undefined,
+  autoScroll: { top?: number, bottom?: number } | undefined,
   tiles: TileConfig[],
   tilesState: { [key: string]: TileState },
   tasks: Task[],
@@ -55,6 +57,8 @@ const store: StoreOptions<RootState> = {
     configVersion: undefined,
     columns: 4,
     zoom: 1,
+    screenRows: undefined,
+    autoScroll: undefined,
     tiles: [],
     tilesState: {},
     tasks: [],
@@ -214,6 +218,8 @@ const store: StoreOptions<RootState> = {
       if (payload.zoom !== undefined) {
         state.zoom = payload.zoom
       }
+      state.screenRows = payload.screenRows
+      state.autoScroll = payload.autoScroll
       state.tiles = payload.tiles
     },
     setConfigList(state, payload: ConfigMetadata[]): void {

@@ -49,12 +49,13 @@
 </template>
 
 <script lang="ts">
-import {computed, defineComponent, nextTick, onMounted, onBeforeUnmount, ref, Ref} from 'vue'
+import {computed, defineComponent, nextTick, onMounted, onBeforeUnmount, ref, Ref, watch} from 'vue'
 import {useStore} from 'vuex'
 
 import MonitororErrors from '@/components/Errors.vue'
 import MonitororTile from '@/components/Tile.vue'
 import MonitororWelcome from '@/components/Welcome.vue'
+import useAutoScroll from '@/composables/useAutoScroll'
 import useErrors from '@/composables/useErrors'
 import TileConfig from '@/types/tileConfig'
 
@@ -92,7 +93,7 @@ export default defineComponent({
         'c-app__disable-transitions': shouldDisableTransitions.value,
         ['c-app__theme-' + theme]: true,
         'c-app__show-cursor': hasConfigVerifyErrors.value || shouldShowWelcomePage.value || shouldShowCursor.value,
-        'c-app__no-scroll': !shouldShowWelcomePage.value && !hasConfigVerifyErrors.value,
+        'c-app__no-scroll': !shouldShowWelcomePage.value && !hasConfigVerifyErrors.value && !hasScreenRows.value,
         'c-app__config-verify-errors': !shouldShowWelcomePage.value && hasConfigVerifyErrors.value,
         'c-app__welcome-page': shouldShowWelcomePage.value,
       }
@@ -102,6 +103,12 @@ export default defineComponent({
       return store.state.tiles
     })
 
+    const hasScreenRows = computed((): boolean => {
+      const screenRows = store.state.screenRows
+
+      return typeof screenRows === 'number' && screenRows >= 1
+    })
+
     const viewport = ref({width: window.innerWidth, height: window.innerHeight})
 
     const cssProperties = computed(() => {
@@ -109,7 +116,8 @@ export default defineComponent({
       const tilesCount = tiles.value.reduce((accumulator, tile) => {
         return accumulator + (tile.rowSpan || 1) * (tile.columnSpan || 1)
       }, 0)
-      const rows = Math.ceil(tilesCount / columns)
+      // With screenRows, the grid is sized to show exactly that number of rows per screen (the page scrolls)
+      const rows = hasScreenRows.value ? store.state.screenRows : Math.ceil(tilesCount / columns)
 
       // Scale the tile content with the size of a grid cell, so that texts, icons and images follow the screen
       // size and the number of tiles. The configured zoom still applies on top of it.
@@ -124,6 +132,24 @@ export default defineComponent({
         '--zoom': store.state.zoom * autoZoom,
       }
     })
+
+    const autoScrollEnabled = computed((): boolean => {
+      return hasScreenRows.value && store.state.autoScroll !== undefined && store.state.autoScroll !== null
+    })
+    const autoScrollTop = computed((): number | undefined => {
+      return store.state.autoScroll ? store.state.autoScroll.top : undefined
+    })
+    const autoScrollBottom = computed((): number | undefined => {
+      return store.state.autoScroll ? store.state.autoScroll.bottom : undefined
+    })
+
+    // One scroll step is the height of the screen rows (the viewport minus one gap), so rows stay aligned
+    useAutoScroll(autoScrollEnabled, autoScrollTop, autoScrollBottom, () => window.innerHeight - TILES_GAP)
+
+    // The page scrolls by itself or by hand: hide the scrollbar (it would also shrink the grid)
+    watch(hasScreenRows, (value) => {
+      document.documentElement.classList.toggle('c-app__hide-scrollbar', value)
+    }, {immediate: true})
 
     const shouldShowWelcomePage = computed((): boolean => {
       return isReady.value && store.getters.shouldShowWelcomePage
@@ -222,6 +248,8 @@ export default defineComponent({
         clearInterval(taskRunnerInterval.value)
       }
 
+      document.documentElement.classList.remove('c-app__hide-scrollbar')
+
       store.dispatch('killAllTasks', [])
     })
 
@@ -281,6 +309,16 @@ export default defineComponent({
       @media screen and (min-width: 751px) {
         overflow: hidden;
       }
+    }
+  }
+
+  html.c-app__hide-scrollbar {
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar,
+    body::-webkit-scrollbar {
+      display: none !important;
+      width: 0 !important;
     }
   }
 

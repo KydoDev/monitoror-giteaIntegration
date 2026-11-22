@@ -643,6 +643,23 @@ MO_CONFIG_PRODUCTION="/etc/monitoror/production.json"
           <span class="tag">Default:</span> <code>1</code>
         </dd>
 
+        <dt><code>screenRows</code> <code class="type">number</code></dt>
+        <dd>
+          Number of tile rows shown on one screen. Tiles beyond these rows are placed below the screen and
+          the page scrolls. Without it, all the tiles fit on one screen.
+        </dd>
+
+        <dt><code>autoScroll</code> <code class="type">object</code></dt>
+        <dd>
+          With <code>screenRows</code>, scrolls the page one screen at a time, then back to the top, forever.
+          Scrolling pauses for 30 seconds when someone uses the page.
+          <ul>
+            <li><code>top</code>: seconds spent on each screen before scrolling down (default <code>60</code>)</li>
+            <li><code>bottom</code>: seconds spent on the last screen before going back to the top (default <code>20</code>)</li>
+          </ul>
+          <span class="tag">Example</span> <code>"autoScroll": { "top": 90, "bottom": 20 }</code>
+        </dd>
+
         <dt><code>tiles</code> <code class="type">Tile[]</code> <span class="required">required</span></dt>
         <dd>
           List of tile definitions. See below to know more about that.
